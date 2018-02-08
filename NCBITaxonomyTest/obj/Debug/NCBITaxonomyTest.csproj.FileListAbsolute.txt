@@ -1,0 +1,7 @@
+C:\Users\stefan.leoni\Documents\Visual Studio 2017\Projects\NCBITaxonomy\NCBITaxonomyTest\bin\Debug\NCBITaxonomyTest.exe.config
+C:\Users\stefan.leoni\Documents\Visual Studio 2017\Projects\NCBITaxonomy\NCBITaxonomyTest\bin\Debug\NCBITaxonomyTest.exe
+C:\Users\stefan.leoni\Documents\Visual Studio 2017\Projects\NCBITaxonomy\NCBITaxonomyTest\bin\Debug\NCBITaxonomyTest.pdb
+C:\Users\stefan.leoni\Documents\Visual Studio 2017\Projects\NCBITaxonomy\NCBITaxonomyTest\obj\Debug\NCBITaxonomyTest.csprojResolveAssemblyReference.cache
+C:\Users\stefan.leoni\Documents\Visual Studio 2017\Projects\NCBITaxonomy\NCBITaxonomyTest\obj\Debug\NCBITaxonomyTest.csproj.CoreCompileInputs.cache
+C:\Users\stefan.leoni\Documents\Visual Studio 2017\Projects\NCBITaxonomy\NCBITaxonomyTest\obj\Debug\NCBITaxonomyTest.exe
+C:\Users\stefan.leoni\Documents\Visual Studio 2017\Projects\NCBITaxonomy\NCBITaxonomyTest\obj\Debug\NCBITaxonomyTest.pdb
