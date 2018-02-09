@@ -1,0 +1,49 @@
+﻿<Window x:Class="NcbiTaxonomyTreeBrowserTest.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:NcbiTaxonomyTreeBrowserTest"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="350" Width="525"
+        Loaded="MainWindow_OnLoaded">
+    <Window.Resources>
+        <local:TreeViewData x:Key="dataItems"/>
+
+        <HierarchicalDataTemplate x:Key="TaxonomyTemplate" 
+                                  DataType="{x:Type local:TaxonomyNodeItem}"
+                                  ItemsSource="{Binding Path=SecondLevelItems}">
+            <TextBlock Text="{Binding DisplayName}" ></TextBlock>
+            <!--Display each string in the SecondLevelItems property in
+          the second level.-->
+            <HierarchicalDataTemplate.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}"/>
+                </DataTemplate>
+            </HierarchicalDataTemplate.ItemTemplate>
+      
+            <!--Set the foreground of the items in the second level
+          to Navy.-->
+            <!--<HierarchicalDataTemplate.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                    <Setter Property="Foreground" Value="DarkRed"/>
+                </Style>
+            </HierarchicalDataTemplate.ItemContainerStyle>-->  
+        </HierarchicalDataTemplate>
+
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <TreeView Grid.Column="0" Name="trvStructure" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TrvStructure_OnCollapsed"   Margin="10" />    
+        <TreeView Grid.Column="1" Margin="20"
+                  ItemsSource="{Binding Source={StaticResource dataItems}}"
+                  ItemTemplate="{StaticResource TaxonomyTemplate}"
+                  TreeViewItem.Expanded="TaxonomyNodeItem_Expanded" 
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling">
+        </TreeView>        
+    </Grid>
+</Window>
