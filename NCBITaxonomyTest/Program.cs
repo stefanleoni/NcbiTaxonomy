@@ -32,7 +32,7 @@ namespace NCBITaxonomyTest
         }
     }
 
-    class NcbiNodesParser
+    public class NcbiNodesParser
     {
         public string FileName { get; set; }
 
