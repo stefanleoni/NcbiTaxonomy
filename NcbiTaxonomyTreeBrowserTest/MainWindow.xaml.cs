@@ -18,6 +18,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using NCBITaxonomyTest;
 
 namespace NcbiTaxonomyTreeBrowserTest
@@ -202,23 +203,34 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         private CancellationTokenSource tokenSource = new CancellationTokenSource();
 
-        private void TaxonomyNodeItem_Expanded(object sender, RoutedEventArgs e)
+        private async void TaxonomyNodeItem_Expanded(object sender, RoutedEventArgs e)
         {
             if (e.OriginalSource is TreeViewItem item)
             {
                 if (item.Header is TaxonomyNodeItem node)
                 {
-                    node.SecondLevelItems.Add(new TaxonomyNodeItem(333, "new", node.Level+1));
+                    //node.SecondLevelItems.Add(new TaxonomyNodeItem(333, "new", node.Level+1));
                     //tokenSource.Cancel();
                     //tokenSource = new CancellationTokenSource();
-                    //node.QuerySecondLevelItems(tokenSource.Token);
+                    BindingOperations.EnableCollectionSynchronization(node.SecondLevelItems, node.Lock);
+                   var task =  node.QuerySecondLevelItems(tokenSource.Token);
+                    await task;
+                    var result = task.Result;
+                    foreach(var sItem in node.SecondLevelItems)
+                    {
+                        var ids = result[sItem.Id];
+                        foreach (var nId in ids)
+                        {
+                            sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nId, nId.ToString(), node.Level + 1));
+                        }
+                    }
                 }
             }
         }
     }
 
 
-    public class TaxonomyNodeItem
+    public class TaxonomyNodeItem 
     {
         public static TreeViewData baseData; 
 
@@ -227,19 +239,13 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         public int Level { get; set; }
 
-        private ObservableCollection<TaxonomyNodeItem> level2Items;
+        public object Lock = new object();
 
-        public ObservableCollection<TaxonomyNodeItem> SecondLevelItems
-        {
-            get 
-            {
-                if (level2Items == null)
-                {
-                    level2Items = new ObservableCollection<TaxonomyNodeItem>();
-                }
-                return level2Items;
-            }
-        }
+        private IEnumerable<int> level2Nodes;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public ObservableCollection<TaxonomyNodeItem> SecondLevelItems { get; set; }
 
 
         public TaxonomyNodeItem(int id, string displayName, int level)
@@ -247,26 +253,30 @@ namespace NcbiTaxonomyTreeBrowserTest
             Id = id;
             DisplayName = displayName;
             Level = level;
-
+            
+            SecondLevelItems = new ObservableCollection<TaxonomyNodeItem>();
             //int max = theOneIsDone ? 1000 : 10000;
             //level++;
-            //for (int i = 0; i < max; ++i)
+            //if (level < 4)
             //{
-            //    SecondLevelItems.Add(new TaxonomyNodeItem (level) {DisplayName = $"xxx {i}"});
+            //    for (int i = 0; i < 4; ++i)
+            //    {
+            //        SecondLevelItems.Add(new TaxonomyNodeItem(4545, "load...", level));
+            //    }
             //}
-
             //theOneIsDone = true;
         }
 
             
-        public async void QuerySecondLevelItems(CancellationToken ct)
+        public async Task<IDictionary<int, IEnumerable<int>>> QuerySecondLevelItems(CancellationToken ct)
         {
             Trace.WriteLine($"enter QuerySecondLevelItems");
 
             try
             {
-                await Task.Factory.StartNew(() =>
+                var task =  Task.Factory.StartNew(() =>
                 {
+                    Dictionary<int, IEnumerable<int>> result = new Dictionary<int, IEnumerable<int>>();
                     Trace.WriteLine($"start task QuerySecondLevelItems");
                     ct.ThrowIfCancellationRequested();
                     foreach (var secondLevelitem in SecondLevelItems)
@@ -277,7 +287,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                             ct.ThrowIfCancellationRequested();
                         }
 
-                        secondLevelitem.QuerySecondLevelChilds();
+                        result.Add(secondLevelitem.Id, secondLevelitem.QuerySecondLevelChilds().ToArray<int>());
 
                     }
                     if (ct.IsCancellationRequested)
@@ -286,7 +296,11 @@ namespace NcbiTaxonomyTreeBrowserTest
                         ct.ThrowIfCancellationRequested();
                     }
                     Trace.WriteLine($"end task QuerySecondLevelItems");
+                    return result;
                 }, ct);
+                
+                await task;
+                return task.Result;
             }
             catch (AggregateException e)
             {
@@ -298,15 +312,14 @@ namespace NcbiTaxonomyTreeBrowserTest
                 Trace.WriteLine($"Op Canceled QuerySecondLevelItems");
             }
             Trace.WriteLine($"leave QuerySecondLevelItems");
+            return null;
         }
 
-        private void QuerySecondLevelChilds()
+        private IEnumerable<int> QuerySecondLevelChilds()
         {
             var bacs = baseData.FindChilds(Id);
-            foreach (var bac in bacs)
-            {
-                SecondLevelItems.Add(new TaxonomyNodeItem(bac, bac.ToString(), Level + 1));
-            }
+            return bacs;
+        
         }
     }
 

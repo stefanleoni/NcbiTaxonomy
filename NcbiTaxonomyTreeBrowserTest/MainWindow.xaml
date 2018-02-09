@@ -13,14 +13,14 @@
         <HierarchicalDataTemplate x:Key="TaxonomyTemplate" 
                                   DataType="{x:Type local:TaxonomyNodeItem}"
                                   ItemsSource="{Binding Path=SecondLevelItems}">
-            <TextBlock Text="{Binding DisplayName}" ></TextBlock>
+            <TextBlock Text="{Binding DisplayName}"></TextBlock>
             <!--Display each string in the SecondLevelItems property in
           the second level.-->
-            <HierarchicalDataTemplate.ItemTemplate>
+            <!--<HierarchicalDataTemplate.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding DisplayName}"/>
                 </DataTemplate>
-            </HierarchicalDataTemplate.ItemTemplate>
+            </HierarchicalDataTemplate.ItemTemplate>-->
       
             <!--Set the foreground of the items in the second level
           to Navy.-->
