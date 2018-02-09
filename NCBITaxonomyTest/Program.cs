@@ -13,13 +13,14 @@ namespace NCBITaxonomyTest
         static void Main(string[] args)
         {
             var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-            var reader2 = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
+            var reader2 = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
 
             Console.ReadLine();
             Stopwatch w = new Stopwatch();
             w.Start();
 
             var nodes = reader.Read();
+            var names = reader2.Read();
 
             w.Stop();
 
@@ -53,11 +54,12 @@ namespace NCBITaxonomyTest
                 {
                     result[line] = ParseLine(s);
                     line++;
-                    //we're just testing read speeds    
                 }
             }
             return result;
         }
+
+        Dictionary<string, int> rankMap = new Dictionary<string, int>();
 
         int[] ParseLine(string s)
         {
@@ -66,12 +68,69 @@ namespace NCBITaxonomyTest
             var ind1 = s.IndexOf('|', ind0 + 1);
             var ind2 = s.IndexOf('|', ind1 + 1);
             result[0] = int.Parse(s.Substring(0, ind0 - 1));
-            result[1] = int.Parse(s.Substring(ind0 + 2, ind1 - ind0 - 2));
-            result[2] = s.Substring(ind1 + 2, ind2 - ind1 - 3).GetHashCode();
+            result[1] = int.Parse(s.Substring(ind0 + 2, ind1 - ind0 - 3));
+            var rank = s.Substring(ind1 + 2, ind2 - ind1 - 3);
+            if(!rankMap.ContainsKey(rank))
+            {
+                rankMap.Add(rank, rank.GetHashCode());
+            }
+            result[2] = rank.GetHashCode();
             return result;
         }
     }
 
+    class NcbiNamesParser
+    {
+        public string FileName { get; set; }
+
+        public NcbiNamesParser(string fileName)
+        {
+            FileName = fileName;
+        }
+
+        public IDictionary<int, TaxName> Read()
+        {
+            var result = new Dictionary<int, TaxName>(2000000);
+            int line = 0;
+            using (FileStream fs = File.OpenRead(FileName))
+            using (BufferedStream bs = new BufferedStream(fs))
+            using (StreamReader sr = new StreamReader(bs))
+            {
+                string s;
+                while ((s = sr.ReadLine()) != null)
+                {
+                    var lResult = ParseLine(s);
+                    if (lResult.Item2.nameClass.Equals("scientific name"))
+                    {
+                        result.Add(lResult.Item1, lResult.Item2);
+                    }
+                    line++;
+                }
+            }
+            return result;
+        }
+
+        public Tuple<int, TaxName> ParseLine(string s)
+        {
+            var ind0 = s.IndexOf('|');
+            var ind1 = s.IndexOf('|', ind0 + 1);
+            var ind2 = s.IndexOf('|', ind1 + 1);
+            var ind3 = s.IndexOf('|', ind2 + 1);
+            var id = int.Parse(s.Substring(0, ind0 - 1));
+            TaxName names = new TaxName();
+            names.name  = s.Substring(ind0 + 2, ind1 - ind0 - 3);
+            names.uniqueName = s.Substring(ind1 + 2, ind2 - ind1 - 3);
+            names.nameClass = s.Substring(ind2 + 2, ind3 - ind2 - 3);
+            return new Tuple<int, TaxName>(id, names);
+        }
+    }
+
+    class TaxName
+    {
+        public string name;
+        public string uniqueName;
+        public string nameClass;
+    }
     //Console.ReadLine();
     //Stopwatch w = new Stopwatch();
     //w.Start();
