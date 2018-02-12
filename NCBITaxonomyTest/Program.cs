@@ -12,7 +12,8 @@ namespace NCBITaxonomyTest
     {
         static void Main(string[] args)
         {
-            var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+            //var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+            var reader = new NcbiNodesParser2(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             var reader2 = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
 
             Console.ReadLine();
@@ -20,17 +21,117 @@ namespace NCBITaxonomyTest
             w.Start();
 
             var nodes = reader.Read();
-            var names = reader2.Read();
+            //var names = reader2.Read();
 
             w.Stop();
+            long totalMemory = System.GC.GetTotalMemory(false);
 
-            Console.WriteLine($"Read {nodes.Length} lines.");
+            Console.WriteLine($"Read {nodes.Count} lines. Uses {(totalMemory / 1024f) / 1024f} Mb.");
            // Console.WriteLine($"Read {lines2} lines.");
             Console.WriteLine($"in {w.Elapsed.Milliseconds} ms");
+
+            //////////////////
+            
+            var childFinder = new NcbiNodeChildFinder() {allNodes = nodes};
+
+            childFinder.FindAllChilds();
+            //////////////////
 
             Console.ReadLine();
         }
     }
+
+
+    public class NcbiNodeChildFinder
+    {
+        public SortedDictionary<int, Node> allNodes;
+
+        public SortedDictionary<int, List<int>> childMaps = new SortedDictionary<int, List<int>>();
+            
+        public int nodesProcessed = 0;
+
+
+        public void FindAllChilds()
+        {
+            foreach (var node in allNodes)
+            {
+                nodesProcessed++;
+                if (nodesProcessed % 100 == 0)
+                {
+                    Console.WriteLine($"processed {nodesProcessed} nodes.");
+                }
+                FindChilds(node.Value);
+            }
+        }
+
+        private void FindChilds(Node node)
+        {
+
+            var result = allNodes.Values.Where(item => item.Parent == node.Id);
+            var findChilds = result as Node[] ?? result.ToArray();
+            foreach (var child in findChilds)
+            {
+                if (!childMaps.ContainsKey(node.Id))
+                {
+                    childMaps[node.Id] = new List<int>();
+                }
+                childMaps[node.Id].Add(child.Id);
+            }
+        }
+    }
+
+    public class NcbiNodesParser2
+    {
+        public string FileName { get; set; }
+
+        public NcbiNodesParser2(string fileName)
+        {
+            FileName = fileName;
+        }
+
+        public SortedDictionary<int, Node> Read()
+        {
+            SortedDictionary<int, Node> result = new SortedDictionary<int, Node>();
+            int line = 0;
+            using (FileStream fs = File.OpenRead(FileName))
+            using (BufferedStream bs = new BufferedStream(fs))
+            using (StreamReader sr = new StreamReader(bs))
+            {
+                string s;
+                while ((s = sr.ReadLine()) != null)
+                {
+                    int[] lineParsed = ParseLine(s);
+                    if (lineParsed[0] == lineParsed[1])
+                    {
+                        Console.WriteLine("Root!");
+                    }
+                    result.Add(lineParsed[0], new Node {Id = lineParsed[0], Parent = lineParsed[1], classId = lineParsed[2]});
+                    line++;
+                }
+            }
+            return result;
+        }
+
+        Dictionary<string, int> rankMap = new Dictionary<string, int>();
+
+        int[] ParseLine(string s)
+        {
+            int[] result = new int[3];
+            var ind0 = s.IndexOf('|');
+            var ind1 = s.IndexOf('|', ind0 + 1);
+            var ind2 = s.IndexOf('|', ind1 + 1);
+            result[0] = int.Parse(s.Substring(0, ind0 - 1));
+            result[1] = int.Parse(s.Substring(ind0 + 2, ind1 - ind0 - 3));
+            var rank = s.Substring(ind1 + 2, ind2 - ind1 - 3);
+            if(!rankMap.ContainsKey(rank))
+            {
+                rankMap.Add(rank, rank.GetHashCode());
+            }
+            result[2] = rank.GetHashCode();
+            return result;
+        }
+    }
+
 
     public class NcbiNodesParser
     {
@@ -131,6 +232,18 @@ namespace NCBITaxonomyTest
         public string uniqueName;
         public string nameClass;
     }
+
+
+    public class Node
+    {
+        public int Id { get; set; }
+        public int Parent { get; set; }
+        public int classId { get; set; }
+
+        public IEnumerable<Node> Childs { get; set; }
+
+    }
+
     //Console.ReadLine();
     //Stopwatch w = new Stopwatch();
     //w.Start();

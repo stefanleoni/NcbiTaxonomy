@@ -324,10 +324,42 @@ namespace NcbiTaxonomyTreeBrowserTest
     }
 
 
+    //public class TreeViewData : ObservableCollection<TaxonomyNodeItem>
+    //{
+    //    private int[][] nodes;
+    //    public NcbiNodesParser NcbiNodesParser { get; set; }
+
+    //    public IEnumerable<int> FindChilds(int parent)
+    //    {
+    //        return from p in nodes where p != null && p[1] == parent select p[0];
+    //    }
+
+    //    public TreeViewData()
+    //    {
+    //        NcbiNodesParser = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+    //        nodes = NcbiNodesParser.Read();
+    //        TaxonomyNodeItem.baseData = this;
+    //        try
+    //        {
+    //            var bacs = FindChilds(2);
+    //            var rootItem = new TaxonomyNodeItem(2, "Bacteria", 0);
+    //            foreach (var bac in bacs)
+    //            {
+    //                rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(bac, bac.ToString(), rootItem.Level + 1));
+    //            }
+    //            Add(rootItem);
+    //        }
+    //        catch (Exception ex)
+    //        {
+
+    //        }            
+    //    }
+    //}
+
     public class TreeViewData : ObservableCollection<TaxonomyNodeItem>
     {
-        private int[][] nodes;
-        public NcbiNodesParser NcbiNodesParser { get; set; }
+        private SortedDictionary<int, int[]> nodes;
+        public NcbiNodesParser2 NcbiNodesParser { get; set; }
 
         public IEnumerable<int> FindChilds(int parent)
         {
@@ -336,7 +368,7 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         public TreeViewData()
         {
-            NcbiNodesParser = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+            NcbiNodesParser = new NcbiNodesParser2(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             nodes = NcbiNodesParser.Read();
             TaxonomyNodeItem.baseData = this;
             try
