@@ -10,6 +10,8 @@
     <Window.Resources>
         <local:TreeViewData x:Key="dataItems"/>
 
+        <local:TaxNodeToUrlConverter x:Key="TaxNodeToUrlConverter"/>
+
         <HierarchicalDataTemplate x:Key="TaxonomyTemplate" 
                                   DataType="{x:Type local:TaxonomyNodeItem}"
                                   ItemsSource="{Binding Path=SecondLevelItems}">
@@ -34,16 +36,17 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition></ColumnDefinition>
-            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition Width="1*"></ColumnDefinition>
+            <ColumnDefinition Width="2*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
-        <TreeView Grid.Column="0" Name="trvStructure" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TrvStructure_OnCollapsed"   Margin="10" />    
-        <TreeView Grid.Column="1" Margin="20"
+        <TreeView Grid.Column="0" Margin="20"
+                  x:Name="TaxTree"
                   ItemsSource="{Binding Source={StaticResource dataItems}}"
                   ItemTemplate="{StaticResource TaxonomyTemplate}"
                   TreeViewItem.Expanded="TaxonomyNodeItem_Expanded" 
                   VirtualizingStackPanel.IsVirtualizing="True"
                   VirtualizingStackPanel.VirtualizationMode="Recycling">
-        </TreeView>        
+        </TreeView>
+        <WebBrowser Grid.Column="1" local:WebBrowserUtility.BindableSource="{Binding Path=SelectedValue ,ElementName=TaxTree, Converter={StaticResource TaxNodeToUrlConverter}}"/>
     </Grid>
 </Window>

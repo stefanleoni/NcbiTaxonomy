@@ -32,9 +32,6 @@ namespace NCBITaxonomyTest
 
             //////////////////
             
-            var childFinder = new NcbiNodeChildFinder() {allNodes = nodes};
-
-            childFinder.FindAllChilds();
             //////////////////
 
             Console.ReadLine();
@@ -105,7 +102,30 @@ namespace NCBITaxonomyTest
                     {
                         Console.WriteLine("Root!");
                     }
-                    result.Add(lineParsed[0], new Node {Id = lineParsed[0], Parent = lineParsed[1], classId = lineParsed[2]});
+
+                    if (!result.ContainsKey(lineParsed[0]))
+                    {
+                        result.Add(lineParsed[0],
+                            new Node {Id = lineParsed[0], Parent = lineParsed[1], classId = lineParsed[2]});
+                    }
+                    else
+                    {
+                        var node = result[lineParsed[0]];
+                        node.Parent = lineParsed[1];
+                        node.classId = lineParsed[2];
+                    }
+
+                    if (!result.ContainsKey(lineParsed[1]))
+                    {
+                        var newNode = new Node {Id = lineParsed[1]};
+                        newNode.Childs.Add(lineParsed[0]);
+                        result.Add(lineParsed[1], newNode);
+                    }
+                    else
+                    {
+                        result[lineParsed[1]].Childs.Add(lineParsed[0]);
+                    }
+
                     line++;
                 }
             }
@@ -180,7 +200,7 @@ namespace NCBITaxonomyTest
         }
     }
 
-    class NcbiNamesParser
+    public class NcbiNamesParser
     {
         public string FileName { get; set; }
 
@@ -226,7 +246,7 @@ namespace NCBITaxonomyTest
         }
     }
 
-    class TaxName
+    public class TaxName
     {
         public string name;
         public string uniqueName;
@@ -236,11 +256,16 @@ namespace NCBITaxonomyTest
 
     public class Node
     {
+        public Node()
+        {
+            Childs = new List<int>();
+        }
+
         public int Id { get; set; }
         public int Parent { get; set; }
         public int classId { get; set; }
 
-        public IEnumerable<Node> Childs { get; set; }
+        public IList<int> Childs { get; private set; }
 
     }
 

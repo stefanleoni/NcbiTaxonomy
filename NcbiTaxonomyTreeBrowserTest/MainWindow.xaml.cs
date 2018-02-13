@@ -11,7 +11,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -37,30 +36,9 @@ namespace NcbiTaxonomyTreeBrowserTest
             //    trvStructure.Items.Add(CreateTreeItem(driveInfo));
         }
 
-        private readonly BackgroundWorker worker = new BackgroundWorker();
 
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
-            NcbiNodesParser = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-            nodes = NcbiNodesParser.Read();
-
-            try
-            {
-                var bacs = FindChilds(2);
-                var tvItem = new TreeViewItem { Header = "Bacteria", Tag = 2 };
-                foreach (var bac in bacs)
-                {
-                    tvItem.Items.Add(new TreeViewItem { Header = bac, Tag = bac });
-                }
-                trvStructure.Items.Add(tvItem);
-            }
-            catch (Exception ex)
-            {
-
-            }            
-
-            worker.DoWork += WorkerDoWork;
-            worker.RunWorkerCompleted += WorkerRunWorkerCompleted;
         }
 
         private void WorkerRunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -74,121 +52,16 @@ namespace NcbiTaxonomyTreeBrowserTest
             
         }
 
-        private int[][] nodes;
 
         private SortedDictionary<int, List<int>> childMap = new SortedDictionary<int, List<int>>();
 
-        private IEnumerable<int> FindChilds(int parent)
-        {
-            return from p in nodes where p != null && p[1] == parent select p[0];
-        }
 
-        public NcbiNodesParser NcbiNodesParser { get; set; }
 
         private async void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
         {
-            TreeViewItem item = e.Source as TreeViewItem;
-            if(item != null 
-               && item.Items.Count > 0)
-            {
-                System.Diagnostics.Trace.WriteLine($"expand item {item.Header}");
-                // 1. get all child nodes
-                // neccessary because we cannot access treevieitems i nanother thread
-                var task = QueryChilds(item);
-                await task;
-
-                System.Diagnostics.Trace.WriteLine($"end expand item {item.Header}");
-
-                // 3. pump childs of child nodes in child node items
-                //foreach (var childItem in item.Items)
-                //{
-                //    if (childItem is TreeViewItem treeViewChildItem)
-                //    {
-                //        foreach (var tagListValue in tagList[(int)(treeViewChildItem.Tag)])
-                //        {
-                //            treeViewChildItem.Items.Add(new TreeViewItem {Header = tagListValue, Tag = tagListValue});
-                //        }
-                //    }
-                //}
-
-            }
-        }
-
-        private Task QueryChilds(TreeViewItem item)
-        {
-            System.Diagnostics.Trace.WriteLine($"query childs item {item.Header}");
-            var requestList = new Dictionary<int, List<int>>();
-
-            if (item.Items.Count == 1 && item.Items[0] is TreeViewItem && (item.Items[0] as TreeViewItem).Tag == null)
-            {
-                item.Items.Clear();
-
-                if (childMap.ContainsKey((int) item.Tag))
-                {
-                    foreach (var childId in childMap[(int)item.Tag])
-                    {
-                        var newItem = new TreeViewItem {Header = childId, Tag = childId};
-                        newItem.Items.Add(new TreeViewItem {Header = "Loading..."});
-                        requestList.Add(childId, new List<int>());
-                        item.Items.Add(newItem);
-                    }
-                }
-            }
-            else
-            {
-                foreach (var childItem in item.Items)
-                {
-                    if (childItem is TreeViewItem treeViewChildItem)
-                    {
-
-                        if (treeViewChildItem.Tag != null && !childMap.ContainsKey((int) treeViewChildItem.Tag))
-                        {
-                            requestList.Add((int) treeViewChildItem.Tag, new List<int>());
-                            childMap[(int) treeViewChildItem.Tag] = null;
-                            treeViewChildItem.Items.Add(new TreeViewItem {Header = "Loading..."});
-                        }
-                    }
-                }
-            }
-
-            System.Diagnostics.Trace.WriteLine($"query childs item {item.Header} initiate background");
-            string id = item.Header.ToString();
-
-            // 2. query all childs of child nodes async 
-            var task = Task.Run(() =>
-            {
-                System.Diagnostics.Trace.WriteLine($"query childs item {id} start background");
-                try
-                {
-                    foreach (var childItem in requestList)
-                    {
-                        var bacs = FindChilds((int) childItem.Key);
-                        foreach (var bac in bacs)
-                        {
-                            childItem.Value.Add(bac);
-                        }
-
-                        childMap[(int) childItem.Key] = childItem.Value;
-                    }
-                }
-                catch (Exception ex)
-                {
-                }
-                System.Diagnostics.Trace.WriteLine($"query childs item {id} end background");
-            });
-            System.Diagnostics.Trace.WriteLine($"query childs item {item.Header} end");
-            return task;
         }
 
 
-        private TreeViewItem CreateTreeItem(object o)
-        {
-            TreeViewItem item = new TreeViewItem();
-            item.Header = o.ToString();
-            item.Tag = o;
-            item.Items.Add("Loading...");
-            return item;
-        }
 
         private void TrvStructure_OnCollapsed(object sender, RoutedEventArgs e)
         {
@@ -212,18 +85,31 @@ namespace NcbiTaxonomyTreeBrowserTest
                     //node.SecondLevelItems.Add(new TaxonomyNodeItem(333, "new", node.Level+1));
                     //tokenSource.Cancel();
                     //tokenSource = new CancellationTokenSource();
-                    BindingOperations.EnableCollectionSynchronization(node.SecondLevelItems, node.Lock);
-                   var task =  node.QuerySecondLevelItems(tokenSource.Token);
-                    await task;
-                    var result = task.Result;
+
+                    //BindingOperations.EnableCollectionSynchronization(node.SecondLevelItems, node.Lock);
+                   
+                    //var task =  node.QuerySecondLevelItems(tokenSource.Token);
+                    //await task;
+                    //var result = task.Result;
+
                     foreach(var sItem in node.SecondLevelItems)
                     {
-                        var ids = result[sItem.Id];
-                        foreach (var nId in ids)
+
+                        //var ids = result[sItem.Id];
+                        try
                         {
-                            sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nId, nId.ToString(), node.Level + 1));
+                            var ids = TaxonomyNodeItem.BaseData.FindChilds(sItem.Id);
+                            foreach (var nId in ids)
+                            {
+                                var nodeData = TaxonomyNodeItem.BaseData.FindNode(nId);
+                                sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData, TaxonomyNodeItem.BaseData.FindName(nId).name, node.Level + 1));
+                            }
+
                         }
-                    }
+                        catch (Exception ex)
+                        {
+
+                        }                    }
                 }
             }
         }
@@ -232,10 +118,16 @@ namespace NcbiTaxonomyTreeBrowserTest
 
     public class TaxonomyNodeItem 
     {
-        public static TreeViewData baseData; 
+        public static TreeViewData BaseData; 
+
 
         public string DisplayName { get; set; }
-        public int Id { get; set; }
+        public int Id
+        {
+            get { return Node.Id; }
+        }
+
+        public Node Node { get; set; }
 
         public int Level { get; set; }
 
@@ -248,23 +140,17 @@ namespace NcbiTaxonomyTreeBrowserTest
         public ObservableCollection<TaxonomyNodeItem> SecondLevelItems { get; set; }
 
 
-        public TaxonomyNodeItem(int id, string displayName, int level)
+        public TaxonomyNodeItem(Node node, string displayName, int level)
         {
-            Id = id;
+            Node = node;
+            if (node.Id == 0)
+            {
+                throw new Exception(".-(");
+            }
+            //Id = node.Id;
             DisplayName = displayName;
             Level = level;
-            
             SecondLevelItems = new ObservableCollection<TaxonomyNodeItem>();
-            //int max = theOneIsDone ? 1000 : 10000;
-            //level++;
-            //if (level < 4)
-            //{
-            //    for (int i = 0; i < 4; ++i)
-            //    {
-            //        SecondLevelItems.Add(new TaxonomyNodeItem(4545, "load...", level));
-            //    }
-            //}
-            //theOneIsDone = true;
         }
 
             
@@ -317,7 +203,7 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         private IEnumerable<int> QuerySecondLevelChilds()
         {
-            var bacs = baseData.FindChilds(Id);
+            var bacs = BaseData.FindChilds(Id);
             return bacs;
         
         }
@@ -358,26 +244,51 @@ namespace NcbiTaxonomyTreeBrowserTest
 
     public class TreeViewData : ObservableCollection<TaxonomyNodeItem>
     {
-        private SortedDictionary<int, int[]> nodes;
+        private SortedDictionary<int, Node> nodes;
+        private IDictionary<int, TaxName> names;
+
         public NcbiNodesParser2 NcbiNodesParser { get; set; }
+
+        public NcbiNamesParser NcbiNamesParser { get; set; }
 
         public IEnumerable<int> FindChilds(int parent)
         {
-            return from p in nodes where p != null && p[1] == parent select p[0];
+            //return from p in nodes where p != null && p[1] == parent select p[0];
+            return nodes[parent].Childs;
+        }
+
+        public TaxName FindName(int id)
+        {
+            return names[id];
         }
 
         public TreeViewData()
         {
             NcbiNodesParser = new NcbiNodesParser2(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             nodes = NcbiNodesParser.Read();
-            TaxonomyNodeItem.baseData = this;
+            foreach (var node in nodes)
+            {
+                if (node.Value.Id == 0)
+                {
+                    throw new Exception(".-(");
+                }
+            }
+
+            NcbiNamesParser = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
+            names = NcbiNamesParser.Read();
+
+            TaxonomyNodeItem.BaseData = this;
             try
             {
+                var rootNode = FindNode(2);
                 var bacs = FindChilds(2);
-                var rootItem = new TaxonomyNodeItem(2, "Bacteria", 0);
+                var rootItem = new TaxonomyNodeItem(rootNode, "Bacteria", 0);
                 foreach (var bac in bacs)
                 {
-                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(bac, bac.ToString(), rootItem.Level + 1));
+                    // resolve child
+                    var node = nodes[bac];
+                    //
+                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name}", rootItem.Level + 1));
                 }
                 Add(rootItem);
             }
@@ -386,6 +297,10 @@ namespace NcbiTaxonomyTreeBrowserTest
 
             }            
         }
-    }
 
+        public Node FindNode(int id)
+        {
+            return nodes[id];
+        }
+    }
 }
