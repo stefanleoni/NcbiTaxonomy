@@ -84,7 +84,12 @@ namespace NCBITaxonomyTest
         public NcbiNodesParser2(string fileName)
         {
             FileName = fileName;
+            ClassNameMap = new SortedDictionary<int, string>();
         }
+
+        private const int IndexId = 0;
+        private const int IndexParent = 1;
+        private const int IndexClassId = 2;
 
         public SortedDictionary<int, Node> Read()
         {
@@ -98,41 +103,58 @@ namespace NCBITaxonomyTest
                 while ((s = sr.ReadLine()) != null)
                 {
                     int[] lineParsed = ParseLine(s);
-                    if (lineParsed[0] == lineParsed[1])
+                    if (lineParsed[IndexId] == lineParsed[IndexParent])
                     {
                         Console.WriteLine("Root!");
                     }
 
-                    if (!result.ContainsKey(lineParsed[0]))
+                    if (!result.ContainsKey(lineParsed[IndexId]))
                     {
-                        result.Add(lineParsed[0],
-                            new Node {Id = lineParsed[0], Parent = lineParsed[1], classId = lineParsed[2]});
+                        var node = new Node
+                        {
+                            Id = lineParsed[IndexId],
+                            Parent = lineParsed[IndexParent],
+                            classId = lineParsed[IndexClassId]
+                        };
+                        result.Add(lineParsed[IndexId], node);
                     }
                     else
                     {
-                        var node = result[lineParsed[0]];
-                        node.Parent = lineParsed[1];
-                        node.classId = lineParsed[2];
+                        Console.WriteLine($"Already contained node {lineParsed[IndexId]}");
+                        var node = result[lineParsed[IndexId]];
+                        node.Parent = lineParsed[IndexParent];
+                        node.classId = lineParsed[IndexClassId];
                     }
 
-                    if (!result.ContainsKey(lineParsed[1]))
+                    if (!result.ContainsKey(lineParsed[IndexParent]))
                     {
-                        var newNode = new Node {Id = lineParsed[1]};
-                        newNode.Childs.Add(lineParsed[0]);
-                        result.Add(lineParsed[1], newNode);
+                        var newNode = new Node {Id = lineParsed[IndexParent]};
+                        newNode.Childs.Add(lineParsed[IndexId]);
+                        newNode.SpeciesCount++;
+                        result.Add(lineParsed[IndexParent], newNode);
                     }
                     else
                     {
-                        result[lineParsed[1]].Childs.Add(lineParsed[0]);
+                        var pNode = result[lineParsed[IndexParent]];
+                        pNode.Childs.Add(lineParsed[IndexId]);
+                        pNode.SpeciesCount++;
                     }
 
                     line++;
                 }
             }
+            // invert rankMap
+            foreach (var item in rankMap)
+            {
+                ClassNameMap.Add(item.Value, item.Key);
+            }
+
             return result;
         }
 
-        Dictionary<string, int> rankMap = new Dictionary<string, int>();
+        public SortedDictionary<int, string> ClassNameMap { get; private set; }
+
+        private Dictionary<string, int> rankMap = new Dictionary<string, int>();
 
         int[] ParseLine(string s)
         {
@@ -264,6 +286,8 @@ namespace NCBITaxonomyTest
         public int Id { get; set; }
         public int Parent { get; set; }
         public int classId { get; set; }
+
+        public int SpeciesCount { get; set; }
 
         public IList<int> Childs { get; private set; }
 

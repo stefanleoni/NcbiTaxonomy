@@ -102,7 +102,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                             foreach (var nId in ids)
                             {
                                 var nodeData = TaxonomyNodeItem.BaseData.FindNode(nId);
-                                sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData, TaxonomyNodeItem.BaseData.FindName(nId).name, node.Level + 1));
+                                sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData, $"{TaxonomyNodeItem.BaseData.FindName(nId).name} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} ({nodeData.SpeciesCount})", node.Level + 1));
                             }
 
                         }
@@ -262,6 +262,11 @@ namespace NcbiTaxonomyTreeBrowserTest
             return names[id];
         }
 
+        public string FindClassName(int id)
+        {
+            return NcbiNodesParser.ClassNameMap[id];
+        }
+
         public TreeViewData()
         {
             NcbiNodesParser = new NcbiNodesParser2(@"C:\Test\NcbiTaxonomy\nodes.dmp");
@@ -288,7 +293,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                     // resolve child
                     var node = nodes[bac];
                     //
-                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name}", rootItem.Level + 1));
+                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.classId)} ({node.SpeciesCount})", rootItem.Level + 1));
                 }
                 Add(rootItem);
             }
