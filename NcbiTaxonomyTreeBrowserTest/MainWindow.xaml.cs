@@ -102,7 +102,12 @@ namespace NcbiTaxonomyTreeBrowserTest
                             foreach (var nId in ids)
                             {
                                 var nodeData = TaxonomyNodeItem.BaseData.FindNode(nId);
-                                sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData, $"{TaxonomyNodeItem.BaseData.FindName(nId).name} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} ({nodeData.SpeciesCount})", node.Level + 1));
+                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
+                                {
+                                    sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData,
+                                        $"{TaxonomyNodeItem.BaseData.FindName(nId).name} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} ({nodeData.SpeciesCount}/{nodeData.NodesCount})",
+                                        node.Level + 1));
+                                }
                             }
 
                         }
@@ -278,6 +283,8 @@ namespace NcbiTaxonomyTreeBrowserTest
                     throw new Exception(".-(");
                 }
             }
+            
+            NcbiNodesParser.CalcAllNodesCount(nodes);
 
             NcbiNamesParser = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
             names = NcbiNamesParser.Read();
@@ -293,7 +300,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                     // resolve child
                     var node = nodes[bac];
                     //
-                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.classId)} ({node.SpeciesCount})", rootItem.Level + 1));
+                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.classId)} ({node.SpeciesCount}/{node.NodesCount})", rootItem.Level + 1));
                 }
                 Add(rootItem);
             }

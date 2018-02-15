@@ -24,17 +24,59 @@ namespace NCBITaxonomyTest
             //var names = reader2.Read();
 
             w.Stop();
-            long totalMemory = System.GC.GetTotalMemory(false);
-
-            Console.WriteLine($"Read {nodes.Count} lines. Uses {(totalMemory / 1024f) / 1024f} Mb.");
            // Console.WriteLine($"Read {lines2} lines.");
-            Console.WriteLine($"in {w.Elapsed.Milliseconds} ms");
+            Console.WriteLine($"read in {w.Elapsed.TotalMilliseconds} ms");
+
+            w.Reset();
+            w.Start();
+
+            reader.CalcAllNodesCount(nodes);
+
+            //var grandParents = reader.CalcNodesCount(nodes, null);
+            //var reducedParents = grandParents as int[] ?? grandParents.ToArray();
+            //do
+            //{
+            //    grandParents = reader.CalcNodesCount(nodes, reducedParents);
+            //    reducedParents = grandParents as int[] ?? grandParents.ToArray();
+            //} while (reducedParents.Any());
+
+            //var leaves = (from n in nodes where n.Value.Childs.Count == 0 select n.Value.Parent).Distinct();
+
+            //Console.WriteLine($"leave nodes parents = {leaves.Count()}");
+
+            //foreach (var leaf in leaves)
+            //{
+            //    // walk up parents 
+            //    var current = nodes[leaf];
+            //    if (current.Id > 2)
+            //    {
+            //        var parent = nodes[current.Parent];
+            //        parent.NodesCount += current.NodesCount;
+            //        bool atRoot = false;
+            //        //do
+            //        //{
+            //        //    parent = nodes[parent.Parent];
+            //        //    parent.NodesCount++;
+            //        //    if (parent.Id <= 2)
+            //        //    {
+            //        //        atRoot = true;
+            //        //    }
+            //        //}
+            //        //while (!atRoot);
+            //    }
+            //}
+
+            w.Stop();
+            Console.WriteLine($"iterate leaves in {w.Elapsed.TotalMilliseconds} ms");
 
             //////////////////
             
             //////////////////
 
+            long totalMemory = System.GC.GetTotalMemory(false);
+            Console.WriteLine($"Read {nodes.Count} lines. Uses {(totalMemory / 1024f) / 1024f} Mb.");
             Console.ReadLine();
+
         }
     }
 
@@ -109,7 +151,7 @@ namespace NCBITaxonomyTest
                     }
 
                     if (!result.ContainsKey(lineParsed[IndexId]))
-                    {
+                    {   // current to result
                         var node = new Node
                         {
                             Id = lineParsed[IndexId],
@@ -119,18 +161,19 @@ namespace NCBITaxonomyTest
                         result.Add(lineParsed[IndexId], node);
                     }
                     else
-                    {
-                        Console.WriteLine($"Already contained node {lineParsed[IndexId]}");
+                    {   // node already contained in list
                         var node = result[lineParsed[IndexId]];
                         node.Parent = lineParsed[IndexParent];
                         node.classId = lineParsed[IndexClassId];
                     }
 
+                    //add current to parents childs
                     if (!result.ContainsKey(lineParsed[IndexParent]))
                     {
                         var newNode = new Node {Id = lineParsed[IndexParent]};
                         newNode.Childs.Add(lineParsed[IndexId]);
                         newNode.SpeciesCount++;
+                        newNode.NodesCount++;
                         result.Add(lineParsed[IndexParent], newNode);
                     }
                     else
@@ -138,6 +181,7 @@ namespace NCBITaxonomyTest
                         var pNode = result[lineParsed[IndexParent]];
                         pNode.Childs.Add(lineParsed[IndexId]);
                         pNode.SpeciesCount++;
+                        pNode.NodesCount++;
                     }
 
                     line++;
@@ -152,7 +196,53 @@ namespace NCBITaxonomyTest
             return result;
         }
 
+        public void CalcAllNodesCount(SortedDictionary<int, Node> nodes)
+        {
+            var grandParents = CalcNodesCount(nodes, null);
+            var reducedParents = grandParents as int[] ?? grandParents.ToArray();
+            do
+            {
+                grandParents = CalcNodesCount(nodes, reducedParents);
+                reducedParents = grandParents as int[] ?? grandParents.ToArray();
+            } while (reducedParents.Any());
+        }
+
+        public IEnumerable<int> CalcNodesCount(SortedDictionary<int, Node> nodes, IEnumerable<int> parents)
+        {
+            IList<int> grandParents = new List<int>();
+
+            if (parents == null)
+            {
+                parents = (from n in nodes where n.Value.Childs.Count == 0 select n.Value.Parent).Distinct();
+            }
+
+            var enumerable = parents as int[] ?? parents.ToArray();
+
+            Console.WriteLine($"nodes parents = {enumerable.Count()}");
+
+            foreach (var leaf in enumerable)
+            {
+                // walk up parents 
+                var current = nodes[leaf];
+                if (current.Id > 2)
+                {
+                    var parent = nodes[current.Parent];
+                    parent.NodesCount += current.NodesCount;
+
+                    var grandParent = nodes[parent.Parent];
+                    if (grandParent.Id > 2)
+                    {
+                        grandParents.Add(grandParent.Id);
+                    }
+                }
+            }
+
+            return grandParents;
+        }
+
         public SortedDictionary<int, string> ClassNameMap { get; private set; }
+
+        //public List<int> grandParents = new List<int>();
 
         private Dictionary<string, int> rankMap = new Dictionary<string, int>();
 
@@ -288,6 +378,7 @@ namespace NCBITaxonomyTest
         public int classId { get; set; }
 
         public int SpeciesCount { get; set; }
+        public int NodesCount { get; set; }
 
         public IList<int> Childs { get; private set; }
 
