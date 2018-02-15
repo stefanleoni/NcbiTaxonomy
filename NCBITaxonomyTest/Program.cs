@@ -144,49 +144,88 @@ namespace NCBITaxonomyTest
                 string s;
                 while ((s = sr.ReadLine()) != null)
                 {
+                    bool root = false;
                     int[] lineParsed = ParseLine(s);
-                    if (lineParsed[IndexId] == lineParsed[IndexParent])
+                    if (lineParsed[IndexId] ==  1 || lineParsed[IndexParent] == 1 )
+                    {
+                        Console.WriteLine("1");
+                        //continue;
+                        //root = true;
+                    }
+                    if (lineParsed[IndexId] == 1)
                     {
                         Console.WriteLine("Root!");
+                        root = true;
                     }
+                    Node node;
 
                     if (!result.ContainsKey(lineParsed[IndexId]))
                     {   // current to result
-                        var node = new Node
+                        node = new Node
                         {
                             Id = lineParsed[IndexId],
                             Parent = lineParsed[IndexParent],
                             classId = lineParsed[IndexClassId]
                         };
+                        if(root)
+                        {
+                            node.Level = 1;
+                        }
+                       
+ 
                         result.Add(lineParsed[IndexId], node);
                     }
                     else
                     {   // node already contained in list
-                        var node = result[lineParsed[IndexId]];
+                        node = result[lineParsed[IndexId]];
                         node.Parent = lineParsed[IndexParent];
                         node.classId = lineParsed[IndexClassId];
                     }
 
+                    Node pNode = null;
                     //add current to parents childs
                     if (!result.ContainsKey(lineParsed[IndexParent]))
                     {
-                        var newNode = new Node {Id = lineParsed[IndexParent]};
-                        newNode.Childs.Add(lineParsed[IndexId]);
-                        newNode.SpeciesCount++;
-                        newNode.NodesCount++;
-                        result.Add(lineParsed[IndexParent], newNode);
-                    }
-                    else
-                    {
-                        var pNode = result[lineParsed[IndexParent]];
+                        pNode = new Node {Id = lineParsed[IndexParent]};
                         pNode.Childs.Add(lineParsed[IndexId]);
-                        pNode.SpeciesCount++;
-                        pNode.NodesCount++;
+                        //newNode.SpeciesCount++;
+                        //newNode.NodesCount++;
+                        result.Add(lineParsed[IndexParent], pNode);
                     }
-
+                    else if (lineParsed[IndexParent] > 1)
+                    {
+                        pNode = result[lineParsed[IndexParent]];
+                        pNode.Childs.Add(lineParsed[IndexId]);
+                        //pNode.SpeciesCount++;
+                        //pNode.NodesCount++;
+                    }
+                    if (pNode != null && !root)
+                    {
+                        if (pNode.Level != 0)
+                        {
+                            node.Level = pNode.Level + 1;
+                        }
+                        else
+                        {
+                            var ppNode = result.ContainsKey(pNode.Parent)? result[pNode.Parent]:null ;
+                            if (ppNode != null)
+                            {
+                                if (ppNode.Level != 0)
+                                {
+                                    pNode.Level = ppNode.Level + 1;
+                                    node.Level = pNode.Level + 1;
+                                }
+                                else
+                                {
+                                    missingLevelsNodes.Add(node.Id);
+                                }
+                            }
+                        }
+                    }
                     line++;
                 }
             }
+            CalcLevels(result);
             // invert rankMap
             foreach (var item in rankMap)
             {
@@ -194,6 +233,72 @@ namespace NCBITaxonomyTest
             }
 
             return result;
+        }
+
+            List<int> missingLevelsNodes = new List<int>();
+        void CalcLevels(SortedDictionary<int, Node> result)
+        {
+            do
+            {
+                Console.WriteLine($"level miss {missingLevelsNodes.Count}");
+                var list2 = new List<int>();
+                foreach (var missLevelNode in missingLevelsNodes)
+                {
+                    var m = result[missLevelNode];
+                    var p = result[m.Parent];
+                    var gp = result[p.Parent];
+                    if (m.Level == 0 && p.Level != 0)
+                    {
+                        m.Level = p.Level + 1;
+                    }
+                    else if(p.Level == 0 && gp.Level !=0)
+                    {
+                        p.Level = gp.Level + 1;
+                        if(m.Level == 0)
+                        {
+                            m.Level = p.Level + 1;
+                        }
+                    }
+                    else if(m.Level == 0)
+                    {
+                        var ci = m.Parent;
+                        Node current = null;
+                        Stack<Node> upstack = new Stack<Node>();
+                        do
+                        {
+                            current = result.ContainsKey(ci) ? result[ci] : null;
+                            if(current.Level == 0)
+                            {
+                                upstack.Push(current);
+                                ci = current.Parent;
+                                continue;
+                            }
+                            else
+                            { // now down
+                                while(upstack.Count > 0)
+                                {
+                                    var x = upstack.Pop();
+                                    x.Level = current.Level + 1;
+                                    current = x;
+                                    
+                                }
+                                if(current != null)
+                                {
+                                    m.Level = current.Level + 1;
+
+                                }
+                                break;
+                            }
+                        } while (current != null && ci > 0);
+                        if (m.Level == 0 && ci != 0)
+                        {
+                            list2.Add(missLevelNode);
+                        }
+
+                    }
+                }
+                missingLevelsNodes = list2;
+            } while (missingLevelsNodes.Count > 0);
         }
 
         public void CalcAllNodesCount(SortedDictionary<int, Node> nodes)
@@ -205,6 +310,7 @@ namespace NCBITaxonomyTest
                 grandParents = CalcNodesCount(nodes, reducedParents);
                 reducedParents = grandParents as int[] ?? grandParents.ToArray();
             } while (reducedParents.Any());
+
         }
 
         public IEnumerable<int> CalcNodesCount(SortedDictionary<int, Node> nodes, IEnumerable<int> parents)
@@ -379,6 +485,8 @@ namespace NCBITaxonomyTest
 
         public int SpeciesCount { get; set; }
         public int NodesCount { get; set; }
+
+        public int Level { get ; set;}
 
         public IList<int> Childs { get; private set; }
 
