@@ -24,47 +24,16 @@ namespace NCBITaxonomyTest
             //var names = reader2.Read();
 
             w.Stop();
-           // Console.WriteLine($"Read {lines2} lines.");
             Console.WriteLine($"read in {w.Elapsed.TotalMilliseconds} ms");
 
             w.Reset();
             w.Start();
 
+
+            var count = nodes.Count(pair => pair.Value.Level < 1);
+            var leftovers = nodes.Where(pair => pair.Value.Level < 1);
+
             reader.CalcAllNodesCount(nodes);
-
-            //var grandParents = reader.CalcNodesCount(nodes, null);
-            //var reducedParents = grandParents as int[] ?? grandParents.ToArray();
-            //do
-            //{
-            //    grandParents = reader.CalcNodesCount(nodes, reducedParents);
-            //    reducedParents = grandParents as int[] ?? grandParents.ToArray();
-            //} while (reducedParents.Any());
-
-            //var leaves = (from n in nodes where n.Value.Childs.Count == 0 select n.Value.Parent).Distinct();
-
-            //Console.WriteLine($"leave nodes parents = {leaves.Count()}");
-
-            //foreach (var leaf in leaves)
-            //{
-            //    // walk up parents 
-            //    var current = nodes[leaf];
-            //    if (current.Id > 2)
-            //    {
-            //        var parent = nodes[current.Parent];
-            //        parent.NodesCount += current.NodesCount;
-            //        bool atRoot = false;
-            //        //do
-            //        //{
-            //        //    parent = nodes[parent.Parent];
-            //        //    parent.NodesCount++;
-            //        //    if (parent.Id <= 2)
-            //        //    {
-            //        //        atRoot = true;
-            //        //    }
-            //        //}
-            //        //while (!atRoot);
-            //    }
-            //}
 
             w.Stop();
             Console.WriteLine($"iterate leaves in {w.Elapsed.TotalMilliseconds} ms");
@@ -135,6 +104,7 @@ namespace NCBITaxonomyTest
 
         public SortedDictionary<int, Node> Read()
         {
+            const int rootNodeId = 131567;
             SortedDictionary<int, Node> result = new SortedDictionary<int, Node>();
             int line = 0;
             using (FileStream fs = File.OpenRead(FileName))
@@ -152,7 +122,7 @@ namespace NCBITaxonomyTest
                         //continue;
                         //root = true;
                     }
-                    if (lineParsed[IndexId] == 1)
+                    if (lineParsed[IndexId] == 131567)
                     {
                         Console.WriteLine("Root!");
                         root = true;
@@ -167,12 +137,6 @@ namespace NCBITaxonomyTest
                             Parent = lineParsed[IndexParent],
                             classId = lineParsed[IndexClassId]
                         };
-                        if(root)
-                        {
-                            node.Level = 1;
-                        }
-                       
- 
                         result.Add(lineParsed[IndexId], node);
                     }
                     else
@@ -199,28 +163,42 @@ namespace NCBITaxonomyTest
                         //pNode.SpeciesCount++;
                         //pNode.NodesCount++;
                     }
-                    if (pNode != null && !root)
+
+                    //Level
+                    if(node.Id == rootNodeId)
                     {
-                        if (pNode.Level != 0)
+                        node.Level = 1;
+                    }
+                    else if(node.Parent == rootNodeId)
+                    {
+                        node.Level = 2;
+                    }
+                    else if (pNode != null)
+                    {
+                        if (pNode.Level == 2)
+                        {
+                            node.Level = 3;
+                        }
+                        if (pNode.Level > 2)
                         {
                             node.Level = pNode.Level + 1;
                         }
-                        else
-                        {
-                            var ppNode = result.ContainsKey(pNode.Parent)? result[pNode.Parent]:null ;
-                            if (ppNode != null)
-                            {
-                                if (ppNode.Level != 0)
-                                {
-                                    pNode.Level = ppNode.Level + 1;
-                                    node.Level = pNode.Level + 1;
-                                }
-                                else
-                                {
-                                    missingLevelsNodes.Add(node.Id);
-                                }
-                            }
-                        }
+                        //else
+                        //{
+                        //    var ppNode = result.ContainsKey(pNode.Parent) ? result[pNode.Parent] : null;
+                        //    if (ppNode != null)
+                        //    {
+                        //        if (ppNode.Level != 0)
+                        //        {
+                        //            pNode.Level = ppNode.Level + 1;
+                        //            node.Level = pNode.Level + 1;
+                        //        }
+                        //        else
+                        //        {
+                        //            missingLevelsNodes.Add(node.Id);
+                        //        }
+                        //    }
+                        //}
                     }
                     line++;
                 }
@@ -236,69 +214,95 @@ namespace NCBITaxonomyTest
         }
 
             List<int> missingLevelsNodes = new List<int>();
-        void CalcLevels(SortedDictionary<int, Node> result)
+        void CalcLevels(SortedDictionary<int, Node> nodes)
         {
+            int missingCount = 0;
+            int lastCount = 0;
             do
             {
-                Console.WriteLine($"level miss {missingLevelsNodes.Count}");
-                var list2 = new List<int>();
-                foreach (var missLevelNode in missingLevelsNodes)
+                lastCount = missingCount;
+                var noLevel = nodes.Where(pair => pair.Value.Level < 1);
+                var keyValuePairs = noLevel as KeyValuePair<int, Node>[] ?? noLevel.ToArray();
+                missingCount = keyValuePairs.Count();
+                Console.WriteLine($"level miss {missingCount }");
+                //var list2 = new List<int>();
+                Parallel.ForEach(keyValuePairs, pair =>
                 {
-                    var m = result[missLevelNode];
-                    var p = result[m.Parent];
-                    var gp = result[p.Parent];
-                    if (m.Level == 0 && p.Level != 0)
+                    var m = pair.Value;
+                    var p = nodes[m.Parent];
+
+                    if (m.Level == 0 && p.Level > 1)
                     {
                         m.Level = p.Level + 1;
                     }
-                    else if(p.Level == 0 && gp.Level !=0)
+                    else
                     {
-                        p.Level = gp.Level + 1;
-                        if(m.Level == 0)
+                        var g = nodes[p.Parent];
+                        if (m.Level == 0 && p.Level == 0
+                            && g.Level > 0)
                         {
+                            p.Level = g.Level + 1;
                             m.Level = p.Level + 1;
                         }
                     }
-                    else if(m.Level == 0)
-                    {
-                        var ci = m.Parent;
-                        Node current = null;
-                        Stack<Node> upstack = new Stack<Node>();
-                        do
-                        {
-                            current = result.ContainsKey(ci) ? result[ci] : null;
-                            if(current.Level == 0)
-                            {
-                                upstack.Push(current);
-                                ci = current.Parent;
-                                continue;
-                            }
-                            else
-                            { // now down
-                                while(upstack.Count > 0)
-                                {
-                                    var x = upstack.Pop();
-                                    x.Level = current.Level + 1;
-                                    current = x;
+                });
+                //foreach (var missLevelNode in noLevel)
+                //{
+                //    var m = missLevelNode.Value;
+                //    var p = nodes[m.Parent];
+
+                //    if (m.Level == 0 && p.Level > 1)
+                //    {
+                //        m.Level = p.Level + 1;
+                //    }
+                ////    else if(p.Level == 0 && gp.Level !=0)
+                ////    {
+                ////        p.Level = gp.Level + 1;
+                ////        if(m.Level == 0)
+                ////        {
+                ////            m.Level = p.Level + 1;
+                ////        }
+                ////    }
+                ////    else if(m.Level == 0)
+                ////    {
+                ////        var ci = m.Parent;
+                ////        Node current = null;
+                ////        Stack<Node> upstack = new Stack<Node>();
+                ////        do
+                ////        {
+                ////            current = result.ContainsKey(ci) ? result[ci] : null;
+                ////            if(current.Level == 0)
+                ////            {
+                ////                upstack.Push(current);
+                ////                ci = current.Parent;
+                ////                continue;
+                ////            }
+                ////            else
+                ////            { // now down
+                ////                while(upstack.Count > 0)
+                ////                {
+                ////                    var x = upstack.Pop();
+                ////                    x.Level = current.Level + 1;
+                ////                    current = x;
                                     
-                                }
-                                if(current != null)
-                                {
-                                    m.Level = current.Level + 1;
+                ////                }
+                ////                if(current != null)
+                ////                {
+                ////                    m.Level = current.Level + 1;
 
-                                }
-                                break;
-                            }
-                        } while (current != null && ci > 0);
-                        if (m.Level == 0 && ci != 0)
-                        {
-                            list2.Add(missLevelNode);
-                        }
+                ////                }
+                ////                break;
+                ////            }
+                ////        } while (current != null && ci > 0);
+                ////        if (m.Level == 0 && ci != 0)
+                ////        {
+                ////            list2.Add(missLevelNode);
+                ////        }
 
-                    }
-                }
-                missingLevelsNodes = list2;
-            } while (missingLevelsNodes.Count > 0);
+                ////    }
+                //}
+                //missingLevelsNodes = list2;
+            } while (missingCount > 0 && lastCount != missingCount);
         }
 
         public void CalcAllNodesCount(SortedDictionary<int, Node> nodes)

@@ -99,17 +99,19 @@ namespace NcbiTaxonomyTreeBrowserTest
                         try
                         {
                             var ids = TaxonomyNodeItem.BaseData.FindChilds(sItem.Id);
-                            foreach (var nId in ids)
+                            if (sItem.SecondLevelItems.Count != ids.Count())
                             {
-                                var nodeData = TaxonomyNodeItem.BaseData.FindNode(nId);
-                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
+                                foreach (var nId in ids)
                                 {
-                                    sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData,
-                                        $"{TaxonomyNodeItem.BaseData.FindName(nId).name} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} ({nodeData.SpeciesCount}/{nodeData.NodesCount})",
-                                        node.Level + 1));
+                                    var nodeData = TaxonomyNodeItem.BaseData.FindNode(nId);
+//                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
+                                    {
+                                        sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData,
+                                            $"{TaxonomyNodeItem.BaseData.FindName(nId).name} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} L{nodeData.Level} ({nodeData.SpeciesCount}/{nodeData.NodesCount})",
+                                            node.Level + 1));
+                                    }
                                 }
                             }
-
                         }
                         catch (Exception ex)
                         {
@@ -284,7 +286,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                 }
             }
             
-            NcbiNodesParser.CalcAllNodesCount(nodes);
+            //NcbiNodesParser.CalcAllNodesCount(nodes);
 
             NcbiNamesParser = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
             names = NcbiNamesParser.Read();
@@ -292,15 +294,15 @@ namespace NcbiTaxonomyTreeBrowserTest
             TaxonomyNodeItem.BaseData = this;
             try
             {
-                var rootNode = FindNode(2);
-                var bacs = FindChilds(2);
-                var rootItem = new TaxonomyNodeItem(rootNode, "Bacteria", 0);
+                var rootNode = FindNode(131567);
+                var bacs = FindChilds(131567);
+                var rootItem = new TaxonomyNodeItem(rootNode, $"{FindName(rootNode.Id).name} - {TaxonomyNodeItem.BaseData.FindClassName(rootNode.classId)} L{rootNode.Level} ({rootNode.SpeciesCount}/{rootNode.NodesCount})", 0);
                 foreach (var bac in bacs)
                 {
                     // resolve child
                     var node = nodes[bac];
                     //
-                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.classId)} ({node.SpeciesCount}/{node.NodesCount})", rootItem.Level + 1));
+                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.classId)} L{node.Level} ({node.SpeciesCount}/{node.NodesCount})", rootItem.Level + 1));
                 }
                 Add(rootItem);
             }
