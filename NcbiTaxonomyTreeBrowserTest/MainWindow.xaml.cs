@@ -270,7 +270,7 @@ namespace NcbiTaxonomyTreeBrowserTest
         private SortedDictionary<int, Node> nodes;
         private IDictionary<int, TaxName> names;
 
-        public NcbiNodesParser2 NcbiNodesParser { get; set; }
+        public NcbiNodesParser NcbiNodesParser { get; set; }
 
         public NcbiNamesParser NcbiNamesParser { get; set; }
 
@@ -292,7 +292,7 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         public TreeViewData()
         {
-            NcbiNodesParser = new NcbiNodesParser2(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+            NcbiNodesParser = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             nodes = NcbiNodesParser.Read();
             foreach (var node in nodes)
             {
@@ -302,7 +302,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                 }
             }
             
-            //NcbiNodesParser.CalcAllNodesCount(nodes);
+            NcbiNodesParser.CalcAllNodesCount(nodes);
 
             NcbiNamesParser = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
             names = NcbiNamesParser.Read();

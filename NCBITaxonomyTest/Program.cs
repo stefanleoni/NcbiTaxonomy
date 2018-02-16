@@ -13,7 +13,7 @@ namespace NCBITaxonomyTest
         static void Main(string[] args)
         {
             //var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-            var reader = new NcbiNodesParser2(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+            var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             var reader2 = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
 
             Console.ReadLine();
@@ -88,11 +88,11 @@ namespace NCBITaxonomyTest
         }
     }
 
-    public class NcbiNodesParser2
+    public class NcbiNodesParser
     {
         public string FileName { get; set; }
 
-        public NcbiNodesParser2(string fileName)
+        public NcbiNodesParser(string fileName)
         {
             FileName = fileName;
             ClassNameMap = new SortedDictionary<int, string>();
@@ -212,8 +212,7 @@ namespace NCBITaxonomyTest
 
             return result;
         }
-
-            List<int> missingLevelsNodes = new List<int>();
+        int maxLevel = 5;
         void CalcLevels(SortedDictionary<int, Node> nodes)
         {
             int missingCount = 0;
@@ -245,6 +244,7 @@ namespace NCBITaxonomyTest
                             m.Level = p.Level + 1;
                         }
                     }
+                    maxLevel = maxLevel < m.Level ? m.Level : maxLevel;
                 });
                 //foreach (var missLevelNode in noLevel)
                 //{
@@ -307,47 +307,50 @@ namespace NCBITaxonomyTest
 
         public void CalcAllNodesCount(SortedDictionary<int, Node> nodes)
         {
-            var grandParents = CalcNodesCount(nodes, null);
-            var reducedParents = grandParents as int[] ?? grandParents.ToArray();
-            do
+      //      var grandParents = CalcNodesCount(nodes, maxLevel);
+        //    var reducedParents = grandParents as int[] ?? grandParents.ToArray();
+            for(int i = maxLevel; i > 1; i--)
             {
-                grandParents = CalcNodesCount(nodes, reducedParents);
-                reducedParents = grandParents as int[] ?? grandParents.ToArray();
-            } while (reducedParents.Any());
+                CalcNodesCount(nodes, i);
+            } 
 
         }
 
-        public IEnumerable<int> CalcNodesCount(SortedDictionary<int, Node> nodes, IEnumerable<int> parents)
+        public void CalcNodesCount(SortedDictionary<int, Node> nodes, int level)
         {
             IList<int> grandParents = new List<int>();
 
-            if (parents == null)
+//            var   parents = (from n in nodes where n.Value.Level == level select n.Value.Parent).Distinct();
+            var parents = (from n in nodes where n.Value.Level == level select n.Value);
+
+
+            Console.WriteLine($"nodes parents = {parents.Count()}");
+
+            foreach (var node in parents)
             {
-                parents = (from n in nodes where n.Value.Childs.Count == 0 select n.Value.Parent).Distinct();
-            }
-
-            var enumerable = parents as int[] ?? parents.ToArray();
-
-            Console.WriteLine($"nodes parents = {enumerable.Count()}");
-
-            foreach (var leaf in enumerable)
-            {
-                // walk up parents 
-                var current = nodes[leaf];
-                if (current.Id > 2)
+                node.NodesCount += node.Childs.Count;
+                foreach(var x in node.RemainingChildCounts)
                 {
-                    var parent = nodes[current.Parent];
-                    parent.NodesCount += current.NodesCount;
-
-                    var grandParent = nodes[parent.Parent];
-                    if (grandParent.Id > 2)
-                    {
-                        grandParents.Add(grandParent.Id);
-                    }
+                    node.NodesCount += x;
                 }
+                var parent = nodes[node.Parent];
+                parent.RemainingChildCounts.Add(node.NodesCount);
+                // walk up parents 
+            //    var current = nodes[leaf];
+            //    if (current.Id > 2)
+            //    {
+            //        var parent = nodes[current.Parent];
+            //        parent.NodesCount += current.NodesCount;
+
+            //        var grandParent = nodes[parent.Parent];
+            //        if (grandParent.Id > 2)
+            //        {
+            //            grandParents.Add(grandParent.Id);
+            //        }
+            //    }
             }
 
-            return grandParents;
+            
         }
 
         public SortedDictionary<int, string> ClassNameMap { get; private set; }
@@ -374,53 +377,6 @@ namespace NCBITaxonomyTest
         }
     }
 
-
-    public class NcbiNodesParser
-    {
-        public string FileName { get; set; }
-
-        public NcbiNodesParser(string fileName)
-        {
-            FileName = fileName;
-        }
-
-        public int[][] Read()
-        {
-            int[][] result = new int[2_000_000][];
-            int line = 0;
-            using (FileStream fs = File.OpenRead(FileName))
-            using (BufferedStream bs = new BufferedStream(fs))
-            using (StreamReader sr = new StreamReader(bs))
-            {
-                string s;
-                while ((s = sr.ReadLine()) != null)
-                {
-                    result[line] = ParseLine(s);
-                    line++;
-                }
-            }
-            return result;
-        }
-
-        Dictionary<string, int> rankMap = new Dictionary<string, int>();
-
-        int[] ParseLine(string s)
-        {
-            int[] result = new int[3];
-            var ind0 = s.IndexOf('|');
-            var ind1 = s.IndexOf('|', ind0 + 1);
-            var ind2 = s.IndexOf('|', ind1 + 1);
-            result[0] = int.Parse(s.Substring(0, ind0 - 1));
-            result[1] = int.Parse(s.Substring(ind0 + 2, ind1 - ind0 - 3));
-            var rank = s.Substring(ind1 + 2, ind2 - ind1 - 3);
-            if(!rankMap.ContainsKey(rank))
-            {
-                rankMap.Add(rank, rank.GetHashCode());
-            }
-            result[2] = rank.GetHashCode();
-            return result;
-        }
-    }
 
     public class NcbiNamesParser
     {
@@ -481,6 +437,7 @@ namespace NCBITaxonomyTest
         public Node()
         {
             Childs = new List<int>();
+            RemainingChildCounts = new List<int>();
         }
 
         public int Id { get; set; }
@@ -489,7 +446,7 @@ namespace NCBITaxonomyTest
 
         public int SpeciesCount { get; set; }
         public int NodesCount { get; set; }
-
+        public IList<int> RemainingChildCounts { get; set; }
         public int Level { get ; set;}
 
         public IList<int> Childs { get; private set; }
