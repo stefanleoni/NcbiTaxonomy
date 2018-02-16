@@ -111,18 +111,26 @@ namespace NcbiTaxonomyTreeBrowserTest
             if (!string.IsNullOrEmpty(x) && !string.IsNullOrEmpty(y)
                 && x.StartsWith("environmental") && y.StartsWith("unclassi"))
             {
-                return 1;
+                return -1;
             }
             if (!string.IsNullOrEmpty(x) && !string.IsNullOrEmpty(y)
-                                         &&  x.StartsWith("unclassi") && y.StartsWith("environmental") )
+                &&  x.StartsWith("unclassi") && y.StartsWith("environmental") )
             {
-                return -1;
+                return 1;
             }
             if (x != null && x.StartsWith("unclass"))
             {
                 return 1;
             }
             if (y != null && y.StartsWith("unclass"))
+            {
+                return -1;
+            }
+            if (x != null && x.StartsWith("environmental"))
+            {
+                return 1;
+            }
+            if (y != null && y.StartsWith("environmental"))
             {
                 return -1;
             }
