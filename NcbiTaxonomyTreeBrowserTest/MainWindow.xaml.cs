@@ -41,40 +41,7 @@ namespace NcbiTaxonomyTreeBrowserTest
         {
         }
 
-        private void WorkerRunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            
-        }
-
-        
-        private void WorkerDoWork(object sender, DoWorkEventArgs e)
-        {
-            
-        }
-
-
-        private SortedDictionary<int, List<int>> childMap = new SortedDictionary<int, List<int>>();
-
-
-
-        private async void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
-        {
-        }
-
-
-
-        private void TrvStructure_OnCollapsed(object sender, RoutedEventArgs e)
-        {
-            //TreeViewItem item = e.Source as TreeViewItem;
-
-            //if (item != null
-            //    && item.Items.Count > 0)
-            //{
-            //    item.Items.Clear();
-            //}
-        }
-
-        private CancellationTokenSource tokenSource = new CancellationTokenSource();
+        private TaxNameComparer comparer = new TaxNameComparer(StringComparer.CurrentCulture);
 
         private async void TaxonomyNodeItem_Expanded(object sender, RoutedEventArgs e)
         {
@@ -101,13 +68,20 @@ namespace NcbiTaxonomyTreeBrowserTest
                             var ids = TaxonomyNodeItem.BaseData.FindChilds(sItem.Id);
                             if (sItem.SecondLevelItems.Count != ids.Count())
                             {
-                                foreach (var nId in ids)
+                                var nameMap = new SortedDictionary<string, int>(comparer);
+
+                                foreach (var id in ids)
                                 {
-                                    var nodeData = TaxonomyNodeItem.BaseData.FindNode(nId);
+                                    var name = TaxonomyNodeItem.BaseData.FindName(id);
+                                    nameMap.Add(name.name, id);
+                                }
+                                foreach (var orderedEntry in nameMap)
+                                {
+                                    var nodeData = TaxonomyNodeItem.BaseData.FindNode(orderedEntry.Value);
 //                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
                                     {
                                         sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData,
-                                            $"{TaxonomyNodeItem.BaseData.FindName(nId).name} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} L{nodeData.Level} ({nodeData.SpeciesCount}/{nodeData.NodesCount})",
+                                            $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} L{nodeData.Level} ({nodeData.SpeciesCount}/{nodeData.NodesCount})",
                                             node.Level + 1));
                                     }
                                 }
@@ -116,12 +90,46 @@ namespace NcbiTaxonomyTreeBrowserTest
                         catch (Exception ex)
                         {
 
-                        }                    }
+                        }
+                    }
                 }
             }
         }
     }
 
+    public class TaxNameComparer : IComparer<string>
+    {
+        #region Implementation of IComparer<in string>
+        private readonly IComparer<string> _baseComparer;
+        public TaxNameComparer(IComparer<string> baseComparer)
+        {
+            _baseComparer = baseComparer;
+        }
+
+        public int Compare(string x, string y)
+        {
+            if (!string.IsNullOrEmpty(x) && !string.IsNullOrEmpty(y)
+                && x.StartsWith("environmental") && y.StartsWith("unclassi"))
+            {
+                return 1;
+            }
+            if (!string.IsNullOrEmpty(x) && !string.IsNullOrEmpty(y)
+                                         &&  x.StartsWith("unclassi") && y.StartsWith("environmental") )
+            {
+                return -1;
+            }
+            if (x != null && x.StartsWith("unclass"))
+            {
+                return 1;
+            }
+            if (y != null && y.StartsWith("unclass"))
+            {
+                return -1;
+            }
+            return _baseComparer.Compare(x, y);
+        }
+        #endregion
+    }
 
     public class TaxonomyNodeItem 
     {
