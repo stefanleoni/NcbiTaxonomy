@@ -303,6 +303,7 @@ namespace NcbiTaxonomyTreeBrowserTest
             }
             
             NcbiNodesParser.CalcAllNodesCount(nodes);
+            NcbiNodesParser.CalcAllSpeciesCount(nodes);
 
             NcbiNamesParser = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
             names = NcbiNamesParser.Read();
