@@ -11,7 +11,7 @@
     <Window.Resources>
         <local:TreeViewData x:Key="dataItems"/>
 
-        <converters:NullBooleanToVisibleConverter x:Key="NullBooleanToVisibleConverter"></converters:NullBooleanToVisibleConverter >
+        <converters:BooleanToVisibleConverter x:Key="BooleanToVisibleConverter"></converters:BooleanToVisibleConverter >
 
         <local:TaxNodeToUrlConverter x:Key="TaxNodeToUrlConverter"/>
 
@@ -19,10 +19,13 @@
                                   DataType="{x:Type local:TaxonomyNodeItem}"
                                   ItemsSource="{Binding Path=SecondLevelItems}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Visibility="{Binding Node.IsBruker, Converter={StaticResource NullBooleanToVisibleConverter}}">
+                <TextBlock Visibility="{Binding Node.IsBruker, Converter={StaticResource BooleanToVisibleConverter}}">
                     <Run Text="&#x26Ab;" Foreground="#0071BC"/>
                 </TextBlock>
-                <TextBlock>
+                <TextBlock Margin="2,0,0,0">
+                    <Run Text="{Binding Node.Id}"> </Run>
+                </TextBlock>
+                <TextBlock Margin="5,0,0,0">
                     <Run Text="{Binding DisplayName}"></Run>
                 </TextBlock>
             </StackPanel>

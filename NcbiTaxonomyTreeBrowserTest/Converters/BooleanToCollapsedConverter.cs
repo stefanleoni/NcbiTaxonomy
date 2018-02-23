@@ -14,4 +14,11 @@ namespace NcbiTaxonomyTreeBrowserTest.Converters
             base(Visibility.Collapsed, Visibility.Collapsed, Visibility.Visible) { }
     }
 
+    public sealed class BooleanToVisibleConverter : BooleanConverter<Visibility>
+    {
+        public BooleanToVisibleConverter() :
+            base(Visibility.Visible, Visibility.Collapsed, Visibility.Collapsed)
+        { }
+    }
+
 }
