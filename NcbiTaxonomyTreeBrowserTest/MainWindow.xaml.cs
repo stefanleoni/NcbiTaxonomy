@@ -81,7 +81,7 @@ namespace NcbiTaxonomyTreeBrowserTest
 //                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
                                     {
                                         sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData,
-                                            $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.classId)} L{nodeData.Level} ({nodeData.SpeciesCount}/{nodeData.NodesCount})",
+                                            $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.ClassId)} L{nodeData.Level} ({nodeData.SpeciesCount}/{nodeData.NodesCount})",
                                             node.Level + 1));
                                     }
                                 }
@@ -308,18 +308,22 @@ namespace NcbiTaxonomyTreeBrowserTest
             NcbiNamesParser = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
             names = NcbiNamesParser.Read();
 
+            var brukerReader = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
+            var brukerNodes = brukerReader.Read();
+            brukerReader.MergeBrukerNodesInto(nodes, brukerNodes);
+                
             TaxonomyNodeItem.BaseData = this;
             try
             {
                 var rootNode = FindNode(131567);
                 var bacs = FindChilds(131567);
-                var rootItem = new TaxonomyNodeItem(rootNode, $"{FindName(rootNode.Id).name} - {TaxonomyNodeItem.BaseData.FindClassName(rootNode.classId)} L{rootNode.Level} ({rootNode.SpeciesCount}/{rootNode.NodesCount})", 0);
+                var rootItem = new TaxonomyNodeItem(rootNode, $"{FindName(rootNode.Id).name} - {TaxonomyNodeItem.BaseData.FindClassName(rootNode.ClassId)} L{rootNode.Level} ({rootNode.SpeciesCount}/{rootNode.NodesCount})", 0);
                 foreach (var bac in bacs)
                 {
                     // resolve child
                     var node = nodes[bac];
                     //
-                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.classId)} L{node.Level} ({node.SpeciesCount}/{node.NodesCount})", rootItem.Level + 1));
+                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.ClassId)} L{node.Level} ({node.SpeciesCount}/{node.NodesCount})", rootItem.Level + 1));
                 }
                 Add(rootItem);
             }

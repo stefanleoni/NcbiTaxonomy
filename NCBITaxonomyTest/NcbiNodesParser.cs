@@ -53,7 +53,7 @@ namespace NCBITaxonomyTest
                         {
                             Id = lineParsed[IndexId],
                             Parent = lineParsed[IndexParent],
-                            classId = lineParsed[IndexClassId]
+                            ClassId = lineParsed[IndexClassId]
                         };
                         result.Add(lineParsed[IndexId], node);
                     }
@@ -61,7 +61,7 @@ namespace NCBITaxonomyTest
                     {   // node already contained in list
                         node = result[lineParsed[IndexId]];
                         node.Parent = lineParsed[IndexParent];
-                        node.classId = lineParsed[IndexClassId];
+                        node.ClassId = lineParsed[IndexClassId];
                     }
 
                     Node pNode = null;
@@ -178,11 +178,7 @@ namespace NCBITaxonomyTest
 
         public void CalcNodesCount(SortedDictionary<int, Node> nodes, int level)
         {
-            IList<int> grandParents = new List<int>();
-
-//            var   parents = (from n in nodes where n.Value.Level == level select n.Value.Parent).Distinct();
             var parents = (from n in nodes where n.Value.Level == level select n.Value);
-
 
             Console.WriteLine($"nodes parents = {parents.Count()}");
 
@@ -224,20 +220,18 @@ namespace NCBITaxonomyTest
                 foreach (var nodeChild in node.Childs)
                 {
                     var childNode = nodes[nodeChild];
-                    if (childNode.classId == classId)
+                    if (childNode.ClassId == classId)
                     {
                         node.SpeciesCount++;
                     }
                 }
-                foreach(var x in node.RemainingSpeciesChildCounts)
+                foreach (var x in node.RemainingSpeciesChildCounts)
                 {
                     node.SpeciesCount += x;
                 }
                 var parent = nodes[node.Parent];
                 parent.RemainingSpeciesChildCounts.Add(node.SpeciesCount);
             }
-
-            
         }
 
         public SortedDictionary<int, string> ClassNameMap { get; private set; }

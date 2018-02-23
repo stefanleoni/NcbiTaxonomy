@@ -11,39 +11,138 @@ namespace NCBITaxonomyTest
     {
         static void Main(string[] args)
         {
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("Press key to start...");
             //var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             var reader2 = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
+            var reader3 = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
 
             Console.ReadLine();
             Stopwatch w = new Stopwatch();
+            Stopwatch wAll = new Stopwatch();
             w.Start();
+            wAll.Start();
 
             var nodes = reader.Read();
-            //var names = reader2.Read();
+            w.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"nodes read in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            w.Restart();
+            var names = reader2.Read();
+            w.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"names read in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            w.Restart();
+            var bruker = reader3.Read();
 
             w.Stop();
-            Console.WriteLine($"read in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"bruker read in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
 
-            w.Reset();
-            w.Start();
+            reader3.MergeBrukerNodesInto(nodes, bruker);
+
+            w.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"set bruker nodes {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
 
 
-            var count = nodes.Count(pair => pair.Value.Level < 1);
-            var leftovers = nodes.Where(pair => pair.Value.Level < 1);
+            w.Restart();
 
             reader.CalcAllNodesCount(nodes);
 
             w.Stop();
-            Console.WriteLine($"iterate leaves in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"calculated nodes in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
+
+            w.Restart();
+            reader.CalcAllSpeciesCount(nodes);
+            w.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"calculated species count in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
 
             //////////////////
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            wAll.Stop();
+            Console.WriteLine($"overall in {wAll.Elapsed.TotalMilliseconds} ms");
             
             //////////////////
 
             long totalMemory = System.GC.GetTotalMemory(false);
-            Console.WriteLine($"Read {nodes.Count} lines. Uses {(totalMemory / 1024f) / 1024f} Mb.");
+            Console.WriteLine($"Read {nodes.Count} lines using {(totalMemory / 1024f) / 1024f} Mb.");
+            Console.ForegroundColor = ConsoleColor.Gray;
             Console.ReadLine();
+
+        }
+    }
+
+    public class BrukerNodesParser
+    {
+        public string FileName { get; set; }
+
+        public BrukerNodesParser(string fileName)
+        {
+            FileName = fileName;
+            //ClassNameMap = new SortedDictionary<int, string>();
+        }
+
+        public IDictionary<int, List<string>> Read()
+        {
+            SortedDictionary<int, List<string>> result = new SortedDictionary<int, List<string>>();
+
+            using (FileStream fs = File.OpenRead(FileName))
+            using (BufferedStream bs = new BufferedStream(fs))
+            using (StreamReader sr = new StreamReader(bs))
+            {
+                string s;
+                while ((s = sr.ReadLine()) != null)
+                {
+                    string[] lineParsed = ParseLine(s);
+                    int node = int.Parse(lineParsed[0]);
+                    if (!result.ContainsKey(node))
+                    {
+                        result.Add(node, new List<string>(new [] {lineParsed[1]}));
+                    }
+                    else
+                    {
+                        result[node].Add(lineParsed [1]);
+                    }
+
+                }
+            }
+
+            return result;
+        }
+
+        string[] ParseLine(string s)
+        {
+            string[] result = new string[2];
+            var ind0 = s.IndexOf('|');
+            result[0] = s.Substring(0, ind0);
+            result[1] = s.Substring(ind0 + 1);
+            return result;
+        }
+
+        public void MergeBrukerNodesInto(SortedDictionary<int, Node> nodes, IDictionary<int, List<string>> bruker)
+        {
+            foreach (var brukerNode in bruker)
+            {
+                if (nodes.ContainsKey(brukerNode.Key))
+                {
+                    var node = nodes[brukerNode.Key];
+                    node.IsBruker = true;
+                }
+                else
+                {
+                    Console.WriteLine($"Node {brukerNode.Key} not contained in NCBI!");
+                }
+            }
 
         }
     }
@@ -153,7 +252,10 @@ namespace NCBITaxonomyTest
 
         public int Id { get; set; }
         public int Parent { get; set; }
-        public int classId { get; set; }
+        public int ClassId { get; set; }
+
+        public bool IsBruker { get; set; }
+
 
         public int SpeciesCount { get; set; }
         public int NodesCount { get; set; }
