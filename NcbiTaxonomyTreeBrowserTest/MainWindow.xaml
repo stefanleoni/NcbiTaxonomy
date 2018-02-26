@@ -12,14 +12,15 @@
         <local:TreeViewData x:Key="dataItems"/>
 
         <converters:BooleanToVisibleConverter x:Key="BooleanToVisibleConverter"></converters:BooleanToVisibleConverter >
-
+        <converters:IntToVisibleConverter x:Key="IntToVisibleConverter"></converters:IntToVisibleConverter >
+        
         <local:TaxNodeToUrlConverter x:Key="TaxNodeToUrlConverter"/>
 
         <HierarchicalDataTemplate x:Key="TaxonomyTemplate" 
                                   DataType="{x:Type local:TaxonomyNodeItem}"
                                   ItemsSource="{Binding Path=SecondLevelItems}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Visibility="{Binding Node.IsBruker, Converter={StaticResource BooleanToVisibleConverter}}">
+                <TextBlock Visibility="{Binding Node.BrukerCount, Converter={StaticResource IntToVisibleConverter}}">
                     <Run Text="&#x26Ab;" Foreground="#0071BC"/>
                 </TextBlock>
                 <TextBlock Margin="2,0,0,0">

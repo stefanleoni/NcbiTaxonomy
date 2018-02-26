@@ -45,6 +45,7 @@ namespace NCBITaxonomyTest
 
             reader3.MergeBrukerNodesInto(nodes, bruker);
 
+            reader3.FindAllByName(bruker, names);
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"set bruker nodes {w.Elapsed.TotalMilliseconds} ms");
@@ -144,6 +145,38 @@ namespace NCBITaxonomyTest
                 }
             }
 
+        }
+
+        public void FindAllByName(IDictionary<int, List<string>> brukerNodes, IDictionary<int, TaxName> names)
+        {
+            var content = File.ReadAllText(FileName);
+            int count = 0;
+            foreach (var brukerNode in brukerNodes)
+            {
+                foreach (var id in brukerNode.Value)
+                {
+                    var index = content.IndexOf(id);
+                    if (index >= 0)
+                    {
+                        count++;
+                        int i = index;
+                        while(content[i] != '\n')
+                        {
+                            i--;
+                        }
+                        Console.WriteLine(i);
+                        int end = content.IndexOf("\t|\t", i);
+                        var sub = content.Substring(i, end - i);
+                        //Console.WriteLine($"Found {id}");
+                    }
+                    //var e = names.Values.FirstOrDefault(name => name.uniqueName.Equals(id));
+                    //if (e != null)
+                    {
+                      //  Console.WriteLine($"Found {id}");
+                    }
+                }
+            }
+            Console.WriteLine($"Found {count}");
         }
     }
 
