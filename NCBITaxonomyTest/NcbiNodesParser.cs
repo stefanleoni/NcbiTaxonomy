@@ -52,7 +52,7 @@ namespace NCBITaxonomyTest
                         node = new Node
                         {
                             Id = lineParsed[IndexId],
-                            Parent = lineParsed[IndexParent],
+                            Parent = new Node { Id = lineParsed[IndexParent]},
                             ClassId = lineParsed[IndexClassId]
                         };
                         result.Add(lineParsed[IndexId], node);
@@ -60,7 +60,7 @@ namespace NCBITaxonomyTest
                     else
                     {   // node already contained in list
                         node = result[lineParsed[IndexId]];
-                        node.Parent = lineParsed[IndexParent];
+                        node.Parent = new Node { Id = lineParsed[IndexParent]};
                         node.ClassId = lineParsed[IndexClassId];
                     }
 
@@ -87,7 +87,7 @@ namespace NCBITaxonomyTest
                     {
                         node.Level = 1;
                     }
-                    else if(node.Parent == rootNodeId)
+                    else if(node.Parent.Id == rootNodeId)
                     {
                         node.Level = 2;
                     }
@@ -146,7 +146,7 @@ namespace NCBITaxonomyTest
                 Parallel.ForEach(keyValuePairs, pair =>
                 {
                     var m = pair.Value;
-                    var p = nodes[m.Parent];
+                    var p = nodes[m.Parent.Id];
 
                     if (m.Level == 0 && p.Level > 1)
                     {
@@ -154,7 +154,7 @@ namespace NCBITaxonomyTest
                     }
                     else
                     {
-                        var g = nodes[p.Parent];
+                        var g = nodes[p.Parent.Id];
                         if (m.Level == 0 && p.Level == 0
                                          && g.Level > 0)
                         {
@@ -189,7 +189,7 @@ namespace NCBITaxonomyTest
                 {
                     node.NodesCount += x;
                 }
-                var parent = nodes[node.Parent];
+                var parent = nodes[node.Parent.Id];
                 parent.RemainingChildCounts.Add(node.NodesCount);
             }
 
@@ -224,13 +224,24 @@ namespace NCBITaxonomyTest
                     {
                         node.SpeciesCount++;
                     }
+
+                    if (childNode.IsBruker)
+                    {
+                        node.BrukerCount++;
+                    }
                 }
                 foreach (var x in node.RemainingSpeciesChildCounts)
                 {
                     node.SpeciesCount += x;
                 }
-                var parent = nodes[node.Parent];
+                foreach (var x in node.RemainingBrukerChildCounts)
+                {
+                    node.BrukerCount += x;
+                }
+
+                var parent = nodes[node.Parent.Id];
                 parent.RemainingSpeciesChildCounts.Add(node.SpeciesCount);
+                parent.RemainingBrukerChildCounts.Add(node.BrukerCount);
             }
         }
 

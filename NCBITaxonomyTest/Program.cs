@@ -173,7 +173,7 @@ namespace NCBITaxonomyTest
         private void FindChilds(Node node)
         {
 
-            var result = allNodes.Values.Where(item => item.Parent == node.Id);
+            var result = allNodes.Values.Where(item => item.Parent.Id == node.Id);
             var findChilds = result as Node[] ?? result.ToArray();
             foreach (var child in findChilds)
             {
@@ -248,10 +248,11 @@ namespace NCBITaxonomyTest
             Childs = new List<int>();
             RemainingChildCounts = new List<int>();
             RemainingSpeciesChildCounts = new List<int>();
+            RemainingBrukerChildCounts = new List<int>();
         }
 
         public int Id { get; set; }
-        public int Parent { get; set; }
+        public Node Parent { get; set; }
         public int ClassId { get; set; }
 
         public bool IsBruker { get; set; }
@@ -259,8 +260,12 @@ namespace NCBITaxonomyTest
 
         public int SpeciesCount { get; set; }
         public int NodesCount { get; set; }
+        public int BrukerCount { get; set; }
+
         public IList<int> RemainingChildCounts { get; set; }
         public IList<int> RemainingSpeciesChildCounts { get; set; }
+        public IList<int> RemainingBrukerChildCounts { get; set; }
+
 
         public int Level { get ; set;}
 
