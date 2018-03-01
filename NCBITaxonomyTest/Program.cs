@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -45,7 +46,8 @@ namespace NCBITaxonomyTest
 
             reader3.MergeBrukerNodesInto(nodes, bruker);
 
-            reader3.FindAllByName(bruker, names);
+            var bruker2 = reader2.ReadNames();
+            reader3.FindAllByName(bruker2, bruker);
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"set bruker nodes {w.Elapsed.TotalMilliseconds} ms");
@@ -147,33 +149,21 @@ namespace NCBITaxonomyTest
 
         }
 
-        public void FindAllByName(IDictionary<int, List<string>> brukerNodes, IDictionary<int, TaxName> names)
+        public void FindAllByName(ArrayList allNames, IDictionary<int, List<string>> bruker)
         {
-            var content = File.ReadAllText(FileName);
             int count = 0;
-            foreach (var brukerNode in brukerNodes)
+            foreach (var line in allNames)
             {
-                foreach (var id in brukerNode.Value)
+                foreach (var ent in bruker)
                 {
-                    var index = content.IndexOf(id);
-                    if (index >= 0)
+                    if ((line as string).Contains(ent.Value[0]))
+                        //var e = names.Values.FirstOrDefault(name => name.uniqueName.Equals(id));
+                        //if (e != null)
                     {
                         count++;
-                        int i = index;
-                        while(content[i] != '\n')
-                        {
-                            i--;
-                        }
-                        Console.WriteLine(i);
-                        int end = content.IndexOf("\t|\t", i);
-                        var sub = content.Substring(i, end - i);
-                        //Console.WriteLine($"Found {id}");
+                        // Console.WriteLine($"Found {id}");
                     }
-                    //var e = names.Values.FirstOrDefault(name => name.uniqueName.Equals(id));
-                    //if (e != null)
-                    {
-                      //  Console.WriteLine($"Found {id}");
-                    }
+
                 }
             }
             Console.WriteLine($"Found {count}");
@@ -246,6 +236,22 @@ namespace NCBITaxonomyTest
                         result.Add(lResult.Item1, lResult.Item2);
                     }
                     line++;
+                }
+            }
+            return result;
+        }
+        public ArrayList ReadNames()
+        {
+            var result = new ArrayList(2000000);
+            int line = 0;
+            using (FileStream fs = File.OpenRead(FileName))
+            using (BufferedStream bs = new BufferedStream(fs))
+            using (StreamReader sr = new StreamReader(bs))
+            {
+                string s;
+                while ((s = sr.ReadLine()) != null)
+                {
+                        result.Add(s);
                 }
             }
             return result;
