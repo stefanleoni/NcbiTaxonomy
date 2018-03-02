@@ -5,6 +5,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Channels;
 using System.Text;
 using System.Threading;
@@ -34,9 +36,43 @@ namespace NcbiTaxonomyTreeBrowserTest
             //DriveInfo[] drives = DriveInfo.GetDrives();
             //foreach(DriveInfo driveInfo in drives)
             //    trvStructure.Items.Add(CreateTreeItem(driveInfo));
+            Browser.Navigated += new NavigatedEventHandler(Target);
+
+        }
+
+        private void Target(object sender, NavigationEventArgs navigationEventArgs)
+        {
+            SetSilent(Browser, true); // make it silent
+        }
+
+        public static void SetSilent(WebBrowser browser, bool silent)
+        {
+            if (browser == null)
+                throw new ArgumentNullException("browser");
+
+            // get an IWebBrowser2 from the document
+            IOleServiceProvider sp = browser.Document as IOleServiceProvider;
+            if (sp != null)
+            {
+                Guid IID_IWebBrowserApp = new Guid("0002DF05-0000-0000-C000-000000000046");
+                Guid IID_IWebBrowser2 = new Guid("D30C1661-CDAF-11d0-8A3E-00C04FC9E26E");
+
+                object webBrowser;
+                sp.QueryService(ref IID_IWebBrowserApp, ref IID_IWebBrowser2, out webBrowser);
+                if (webBrowser != null)
+                {
+                    webBrowser.GetType().InvokeMember("Silent", BindingFlags.Instance | BindingFlags.Public | BindingFlags.PutDispProperty, null, webBrowser, new object[] { silent });
+                }
+            }
         }
 
 
+        [ComImport, Guid("6D5140C1-7436-11CE-8034-00AA006009FA"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IOleServiceProvider
+        {
+            [PreserveSig]
+            int QueryService([In] ref Guid guidService, [In] ref Guid riid, [MarshalAs(UnmanagedType.IDispatch)] out object ppvObject);
+        }
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
         }
@@ -61,7 +97,7 @@ namespace NcbiTaxonomyTreeBrowserTest
 
                     foreach(var sItem in node.SecondLevelItems)
                     {
-
+                        int ind = 0;
                         //var ids = result[sItem.Id];
                         try
                         {
@@ -69,21 +105,57 @@ namespace NcbiTaxonomyTreeBrowserTest
                             if (sItem.SecondLevelItems.Count != ids.Count())
                             {
                                 var nameMap = new SortedDictionary<string, int>(comparer);
-
-                                foreach (var id in ids)
+                                try
                                 {
-                                    var name = TaxonomyNodeItem.BaseData.FindName(id);
-                                    nameMap.Add(name.name, id);
+
+                                    foreach (var id in ids)
+                                    {
+
+                                        try
+                                        {
+                                            var name = TaxonomyNodeItem.BaseData.FindName(id);
+                                            nameMap.Add(name.name, id);
+
+                                        }
+                                        catch (Exception e1)
+                                        {
+
+                                            throw;
+                                        }
+                                    }
+
+                                }
+                                catch (Exception e3)
+                                {
+
+                                    throw;
                                 }
                                 foreach (var orderedEntry in nameMap)
                                 {
                                     var nodeData = TaxonomyNodeItem.BaseData.FindNode(orderedEntry.Value);
-//                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
+                                    //                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
+                                    var newNode = new TaxonomyNodeItem(nodeData,
+                                        $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.ClassId)} L{nodeData.Level} ({nodeData.BrukerCount}/{nodeData.SpeciesCount}/{nodeData.NodesCount})",
+                                        node.Level + 1);
+                                    
+                                    ind++;
+                                    try
                                     {
-                                        sItem.SecondLevelItems.Add(new TaxonomyNodeItem(nodeData,
-                                            $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.ClassId)} L{nodeData.Level} ({nodeData.BrukerCount}/{nodeData.SpeciesCount}/{nodeData.NodesCount})",
-                                            node.Level + 1));
+                                   //     if (!sItem.SecondLevelItems.Contains(newNode))
+                                        {
+                                            sItem.SecondLevelItems.Add(newNode);
+                                        }
+                                 //       else
+                                        {
+                                  //          Console.WriteLine("duplicate");
+                                        }
+
                                     }
+                                    catch (Exception e2)
+                                    {
+
+                                        throw;
+                                    }                                    
                                 }
                             }
                         }
@@ -268,7 +340,7 @@ namespace NcbiTaxonomyTreeBrowserTest
     public class TreeViewData : ObservableCollection<TaxonomyNodeItem>
     {
         private SortedDictionary<int, Node> nodes;
-        private IDictionary<int, TaxName> names;
+        private Dictionary<int, TaxName> names;
 
         public NcbiNodesParser NcbiNodesParser { get; set; }
 
@@ -292,26 +364,27 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         public TreeViewData()
         {
-            NcbiNodesParser = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-            nodes = NcbiNodesParser.Read();
-            foreach (var node in nodes)
-            {
-                if (node.Value.Id == 0)
-                {
-                    throw new Exception(".-(");
-                }
-            }
-
-            var brukerReader = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
-            var brukerNodes = brukerReader.Read();
-            brukerReader.MergeBrukerNodesInto(nodes, brukerNodes);
+            NcbiNodesParser = new NcbiNodesParser();
+            nodes = NcbiNodesParser.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+            NcbiNodesParser.Add(@"C:\Test\NcbiTaxonomy\brukerNodes.dmp",nodes);
+            //foreach (var node in nodes)
+            //{
+            //    if (node.Value.Id == 0)
+            //    {
+            //        throw new Exception(".-(");
+            //    }
+            //}
+            NcbiNamesParser = new NcbiNamesParser();
+            names = NcbiNamesParser.Read(@"C:\Test\NcbiTaxonomy\names.dmp");
+            NcbiNamesParser.Add(names, @"C:\Test\NcbiTaxonomy\BrukerNames.dmp");
+            //var brukerReader = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
+            //var brukerNodes = brukerReader.Read(NcbiNodesParser.rankMap["no rank"]);
+            //brukerReader.MergeBrukerNodesInto(nodes, names, brukerNodes);
 
             NcbiNodesParser.CalcAllNodesCount(nodes);
             NcbiNodesParser.CalcAllSpeciesCount(nodes);
 
-            NcbiNamesParser = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
-            names = NcbiNamesParser.Read();
-
+            
                 
             TaxonomyNodeItem.BaseData = this;
             try

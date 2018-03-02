@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -15,8 +14,8 @@ namespace NCBITaxonomyTest
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine("Press key to start...");
             //var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-            var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-            var reader2 = new NcbiNamesParser(@"C:\Test\NcbiTaxonomy\names.dmp");
+            var reader = new NcbiNodesParser();
+            var namesReader = new NcbiNamesParser();
             var reader3 = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
 
             Console.ReadLine();
@@ -25,29 +24,30 @@ namespace NCBITaxonomyTest
             w.Start();
             wAll.Start();
 
-            var nodes = reader.Read();
+            var nodes = reader.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"nodes read in {w.Elapsed.TotalMilliseconds} ms");
             Console.ForegroundColor = ConsoleColor.Gray;
             w.Restart();
-            var names = reader2.Read();
+            var names = namesReader.Read(@"C:\Test\NcbiTaxonomy\names.dmp");
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"names read in {w.Elapsed.TotalMilliseconds} ms");
             Console.ForegroundColor = ConsoleColor.Gray;
             w.Restart();
-            var bruker = reader3.Read();
-
+            //var bruker = reader3.Read(reader.rankMap["no rank"]);
+            reader.Add(@"C:\Test\NcbiTaxonomy\brukerNodes.dmp", nodes);
+            namesReader.Add(names, @"C:\Test\NcbiTaxonomy\brukerNames.dmp");
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"bruker read in {w.Elapsed.TotalMilliseconds} ms");
             Console.ForegroundColor = ConsoleColor.Gray;
+            w.Restart();
 
-            reader3.MergeBrukerNodesInto(nodes, bruker);
-
-            var bruker2 = reader2.ReadNames();
-            reader3.FindAllByName(bruker2, bruker);
+//            reader3.MergeBrukerNodesInto(nodes, names, bruker);
+          //  var bruker2 = reader2.ReadNames();
+          //  reader3.FindAllByName(bruker, @"C:\Test\NcbiTaxonomy\names.dmp");
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"set bruker nodes {w.Elapsed.TotalMilliseconds} ms");
@@ -95,9 +95,10 @@ namespace NCBITaxonomyTest
             //ClassNameMap = new SortedDictionary<int, string>();
         }
 
-        public IDictionary<int, List<string>> Read()
+
+        public List<NamedNode> ReadNodes()
         {
-            SortedDictionary<int, List<string>> result = new SortedDictionary<int, List<string>>();
+            var result = new List<NamedNode>();
 
             using (FileStream fs = File.OpenRead(FileName))
             using (BufferedStream bs = new BufferedStream(fs))
@@ -108,13 +109,48 @@ namespace NCBITaxonomyTest
                 {
                     string[] lineParsed = ParseLine(s);
                     int node = int.Parse(lineParsed[0]);
-                    if (!result.ContainsKey(node))
-                    {
-                        result.Add(node, new List<string>(new [] {lineParsed[1]}));
+                    result.Add(new NamedNode { Id =  node, Name = lineParsed[1]});
+                }
+            }
+            return result;
+        }
+
+        private const int IndexId = 0;
+        private const int IndexParent = 1;
+        private const int IndexName = 2;
+
+        public SortedDictionary<int, Node> Read(int defaultClassId)
+        {
+            SortedDictionary<int, Node> result = new SortedDictionary<int, Node>();
+
+            using (FileStream fs = File.OpenRead(FileName))
+            using (BufferedStream bs = new BufferedStream(fs))
+            using (StreamReader sr = new StreamReader(bs))
+            {
+                string s;
+                while ((s = sr.ReadLine()) != null)
+                {
+                    string[] lineParsed = ParseLine(s);
+                    int nodeId = int.Parse(lineParsed[IndexId]);
+                    int parentNodeId = int.Parse(lineParsed[IndexParent]);
+
+                    Node node;
+                    if (!result.ContainsKey(nodeId))
+                    {   // current to result
+                        node = new Node
+                        {
+                            Id = nodeId,
+                            Parent = new Node { Id =  parentNodeId},
+                            //IsBruker = true,
+                            ClassId = defaultClassId
+                        };
+                        result.Add(nodeId, node);
                     }
                     else
-                    {
-                        result[node].Add(lineParsed [1]);
+                    {   // node already contained in list
+                        node = result[nodeId];
+                        node.Parent = new Node { Id = parentNodeId };
+                        node.ClassId = defaultClassId;
                     }
 
                 }
@@ -125,48 +161,73 @@ namespace NCBITaxonomyTest
 
         string[] ParseLine(string s)
         {
-            string[] result = new string[2];
+            string[] result = new string[3];
             var ind0 = s.IndexOf('|');
+            var ind1 = s.IndexOf('|', ind0 + 1);
             result[0] = s.Substring(0, ind0);
-            result[1] = s.Substring(ind0 + 1);
+            result[1] = s.Substring(ind0 + 2, ind1 - ind0 - 3);
+            result[2] = s.Substring(ind0 + 1);
             return result;
         }
 
-        public void MergeBrukerNodesInto(SortedDictionary<int, Node> nodes, IDictionary<int, List<string>> bruker)
+        public void MergeBrukerNodesInto(SortedDictionary<int, Node> nodes, IDictionary<int, TaxName> names,
+            SortedDictionary<int, Node> bruker)
         {
+            int countAdd = 0;
             foreach (var brukerNode in bruker)
             {
                 if (nodes.ContainsKey(brukerNode.Key))
                 {
                     var node = nodes[brukerNode.Key];
-                    node.IsBruker = true;
+                    //node.IsBruker = true;
                 }
                 else
                 {
-                    Console.WriteLine($"Node {brukerNode.Key} not contained in NCBI!");
-                }
-            }
-
-        }
-
-        public void FindAllByName(ArrayList allNames, IDictionary<int, List<string>> bruker)
-        {
-            int count = 0;
-            foreach (var line in allNames)
-            {
-                foreach (var ent in bruker)
-                {
-                    if ((line as string).Contains(ent.Value[0]))
-                        //var e = names.Values.FirstOrDefault(name => name.uniqueName.Equals(id));
-                        //if (e != null)
+                    //parent
+                    if (nodes.ContainsKey(brukerNode.Value.Parent.Id))
                     {
-                        count++;
-                        // Console.WriteLine($"Found {id}");
+                        var parent = nodes[brukerNode.Value.Parent.Id];
+                        brukerNode.Value.Parent = parent;
+                        parent.Childs.Add(brukerNode.Key);
                     }
 
+                    nodes.Add(brukerNode.Key, brukerNode.Value);
+                    names.Add(brukerNode.Key, new TaxName{name = $"xx{countAdd}", uniqueName = $"xx{countAdd}", nameClass = "CB"});
+                   // Console.WriteLine($"Node {brukerNode.Key} not contained in NCBI!");
+                    countAdd++;
                 }
             }
-            Console.WriteLine($"Found {count}");
+            Console.WriteLine($"Added {countAdd} bruker nodes!");
+//splitt bruker in nodes and names 
+        }
+
+        public void FindAllByName(List<NamedNode> allBrukerNodes, string namesFilename)
+        {
+           // var result = new Dictionary<int, TaxName>(2000000);
+            int line = 0;
+            using (FileStream fs = File.OpenRead(namesFilename))
+            using (BufferedStream bs = new BufferedStream(fs))
+            using (StreamReader sr = new StreamReader(bs))
+            {
+                string s;
+                while ((s = sr.ReadLine()) != null)
+                {
+                    foreach (var brukerNode in allBrukerNodes)
+                    {
+                        if(s.Contains(brukerNode.Name))
+                        {
+                            Console.WriteLine(">>Found ");
+                        }
+                    }
+                    //var lResult = ParseLine(s);
+                    //if (lResult.Item2.nameClass.Equals("scientific name"))
+                    //{
+                    //    result.Add(lResult.Item1, lResult.Item2);
+                    //}
+                    line++;
+                }
+            }
+           // return result;
         }
     }
 
@@ -209,108 +270,6 @@ namespace NCBITaxonomyTest
         }
     }
 
-
-    public class NcbiNamesParser
-    {
-        public string FileName { get; set; }
-
-        public NcbiNamesParser(string fileName)
-        {
-            FileName = fileName;
-        }
-
-        public IDictionary<int, TaxName> Read()
-        {
-            var result = new Dictionary<int, TaxName>(2000000);
-            int line = 0;
-            using (FileStream fs = File.OpenRead(FileName))
-            using (BufferedStream bs = new BufferedStream(fs))
-            using (StreamReader sr = new StreamReader(bs))
-            {
-                string s;
-                while ((s = sr.ReadLine()) != null)
-                {
-                    var lResult = ParseLine(s);
-                    if (lResult.Item2.nameClass.Equals("scientific name"))
-                    {
-                        result.Add(lResult.Item1, lResult.Item2);
-                    }
-                    line++;
-                }
-            }
-            return result;
-        }
-        public ArrayList ReadNames()
-        {
-            var result = new ArrayList(2000000);
-            int line = 0;
-            using (FileStream fs = File.OpenRead(FileName))
-            using (BufferedStream bs = new BufferedStream(fs))
-            using (StreamReader sr = new StreamReader(bs))
-            {
-                string s;
-                while ((s = sr.ReadLine()) != null)
-                {
-                        result.Add(s);
-                }
-            }
-            return result;
-        }
-
-        public Tuple<int, TaxName> ParseLine(string s)
-        {
-            var ind0 = s.IndexOf('|');
-            var ind1 = s.IndexOf('|', ind0 + 1);
-            var ind2 = s.IndexOf('|', ind1 + 1);
-            var ind3 = s.IndexOf('|', ind2 + 1);
-            var id = int.Parse(s.Substring(0, ind0 - 1));
-            TaxName names = new TaxName();
-            names.name  = s.Substring(ind0 + 2, ind1 - ind0 - 3);
-            names.uniqueName = s.Substring(ind1 + 2, ind2 - ind1 - 3);
-            names.nameClass = s.Substring(ind2 + 2, ind3 - ind2 - 3);
-            return new Tuple<int, TaxName>(id, names);
-        }
-    }
-
-    public class TaxName
-    {
-        public string name;
-        public string uniqueName;
-        public string nameClass;
-    }
-
-
-    public class Node
-    {
-        public Node()
-        {
-            Childs = new List<int>();
-            RemainingChildCounts = new List<int>();
-            RemainingSpeciesChildCounts = new List<int>();
-            RemainingBrukerChildCounts = new List<int>();
-        }
-
-        public int Id { get; set; }
-        public Node Parent { get; set; }
-        public int ClassId { get; set; }
-
-        public bool IsBruker { get; set; }
-
-
-        public int SpeciesCount { get; set; }
-        public int NodesCount { get; set; }
-        public int BrukerCount { get; set; }
-
-        public IList<int> RemainingChildCounts { get; set; }
-        public IList<int> RemainingSpeciesChildCounts { get; set; }
-        public IList<int> RemainingBrukerChildCounts { get; set; }
-
-
-        public int Level { get ; set;}
-
-        public IList<int> Childs { get; private set; }
-
-    }
 
     //Console.ReadLine();
     //Stopwatch w = new Stopwatch();

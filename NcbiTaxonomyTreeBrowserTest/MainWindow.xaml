@@ -13,15 +13,21 @@
 
         <converters:BooleanToVisibleConverter x:Key="BooleanToVisibleConverter"></converters:BooleanToVisibleConverter >
         <converters:IntToVisibleConverter x:Key="IntToVisibleConverter"></converters:IntToVisibleConverter >
-        
+        <converters:CountAndBrukerToVisibilityConverter x:Key="CountAndBrukerToVisibilityConverter"></converters:CountAndBrukerToVisibilityConverter>
         <local:TaxNodeToUrlConverter x:Key="TaxNodeToUrlConverter"/>
 
         <HierarchicalDataTemplate x:Key="TaxonomyTemplate" 
                                   DataType="{x:Type local:TaxonomyNodeItem}"
                                   ItemsSource="{Binding Path=SecondLevelItems}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Visibility="{Binding Node.BrukerCount, Converter={StaticResource IntToVisibleConverter}}">
+                <TextBlock >
                     <Run Text="&#x26Ab;" Foreground="#0071BC"/>
+                    <TextBlock.Visibility>
+                        <MultiBinding Converter="{StaticResource CountAndBrukerToVisibilityConverter}">
+                            <Binding Path="Node.BrukerCount"/>
+                            <Binding Path="Node.IsBruker"/>
+                        </MultiBinding>
+                    </TextBlock.Visibility>
                 </TextBlock>
                 <TextBlock Margin="2,0,0,0">
                     <Run Text="{Binding Node.Id}"> </Run>
@@ -61,6 +67,8 @@
                   VirtualizingStackPanel.IsVirtualizing="True"
                   VirtualizingStackPanel.VirtualizationMode="Recycling">
         </TreeView>
-        <WebBrowser Grid.Column="1" local:WebBrowserUtility.BindableSource="{Binding Path=SelectedValue ,ElementName=TaxTree, Converter={StaticResource TaxNodeToUrlConverter}}"/>
+        <WebBrowser Grid.Column="1" 
+                    Name="Browser"
+                    local:WebBrowserUtility.BindableSource="{Binding Path=SelectedValue ,ElementName=TaxTree, Converter={StaticResource TaxNodeToUrlConverter}}"/>
     </Grid>
 </Window>

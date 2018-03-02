@@ -20,7 +20,7 @@ namespace NcbiTaxonomyTreeBrowserTest.Converters
     public sealed class BooleanToVisibleConverter : BooleanConverter<Visibility>
     {
         public BooleanToVisibleConverter() :
-            base(Visibility.Visible, Visibility.Collapsed, Visibility.Collapsed)
+            base(Visibility.Visible, Visibility.Hidden, Visibility.Collapsed)
         { }
     }
 
@@ -35,7 +35,7 @@ namespace NcbiTaxonomyTreeBrowserTest.Converters
         {
             if (value is int i)
             {
-                return i > 0 ? Visibility.Visible : Visibility.Collapsed;
+                return i > 0 ? Visibility.Visible : Visibility.Hidden;
             }
             return Visibility.Collapsed;
         }
@@ -48,4 +48,23 @@ namespace NcbiTaxonomyTreeBrowserTest.Converters
         #endregion
     }
     
+    public sealed class CountAndBrukerToVisibilityConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            int count = (int)values[0];
+            bool isBruker = (bool)values[1];
+            if (count > 0 || isBruker)
+            {
+                return Visibility.Visible;
+            }
+
+            return Visibility.Hidden;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

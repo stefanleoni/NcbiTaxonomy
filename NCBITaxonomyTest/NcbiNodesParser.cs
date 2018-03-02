@@ -8,11 +8,9 @@ namespace NCBITaxonomyTest
 {
     public class NcbiNodesParser
     {
-        public string FileName { get; set; }
 
-        public NcbiNodesParser(string fileName)
+        public NcbiNodesParser()
         {
-            FileName = fileName;
             ClassNameMap = new SortedDictionary<int, string>();
         }
 
@@ -20,12 +18,31 @@ namespace NCBITaxonomyTest
         private const int IndexParent = 1;
         private const int IndexClassId = 2;
 
-        public SortedDictionary<int, Node> Read()
+        const int RootNodeId = 131567;
+
+        public SortedDictionary<int, Node> Read(string fileName)
         {
-            const int rootNodeId = 131567;
-            SortedDictionary<int, Node> result = new SortedDictionary<int, Node>();
-            int line = 0;
-            using (FileStream fs = File.OpenRead(FileName))
+            SortedDictionary<int, Node> nodes = new SortedDictionary<int, Node>();
+
+            DoRead(fileName, nodes);
+            CalcLevels(nodes);
+            // invert rankMap
+            foreach (var item in rankMap)
+            {
+                ClassNameMap.Add(item.Value, item.Key);
+            }
+            return nodes;
+        }
+
+        public void Add(string fileName, SortedDictionary<int, Node> nodes)
+        {
+            DoRead(fileName, nodes);
+            CalcLevels(nodes);
+        }
+
+        private void DoRead(string fileName, SortedDictionary<int, Node> result)
+        {
+            using (FileStream fs = File.OpenRead(fileName))
             using (BufferedStream bs = new BufferedStream(fs))
             using (StreamReader sr = new StreamReader(bs))
             {
@@ -34,33 +51,37 @@ namespace NCBITaxonomyTest
                 {
                     bool root = false;
                     int[] lineParsed = ParseLine(s);
-                    if (lineParsed[IndexId] ==  1 || lineParsed[IndexParent] == 1 )
+                    if (lineParsed[IndexId] == 1 || lineParsed[IndexParent] == 1)
                     {
                         Console.WriteLine("1");
                         //continue;
                         //root = true;
                     }
+
                     if (lineParsed[IndexId] == 131567)
                     {
                         Console.WriteLine("Root!");
                         root = true;
                     }
+
                     Node node;
 
                     if (!result.ContainsKey(lineParsed[IndexId]))
-                    {   // current to result
+                    {
+                        // current to result
                         node = new Node
                         {
                             Id = lineParsed[IndexId],
-                            Parent = new Node { Id = lineParsed[IndexParent]},
-                            ClassId = lineParsed[IndexClassId]
+                            Parent = new Node {Id = lineParsed[IndexParent]},
+                            ClassId = lineParsed[IndexClassId],
                         };
                         result.Add(lineParsed[IndexId], node);
                     }
                     else
-                    {   // node already contained in list
+                    {
+                        // node already contained in list
                         node = result[lineParsed[IndexId]];
-                        node.Parent = new Node { Id = lineParsed[IndexParent]};
+                        node.Parent = new Node {Id = lineParsed[IndexParent]};
                         node.ClassId = lineParsed[IndexClassId];
                     }
 
@@ -83,11 +104,11 @@ namespace NCBITaxonomyTest
                     }
 
                     //Level
-                    if(node.Id == rootNodeId)
+                    if (node.Id == RootNodeId)
                     {
                         node.Level = 1;
                     }
-                    else if(node.Parent.Id == rootNodeId)
+                    else if (node.Parent.Id == RootNodeId)
                     {
                         node.Level = 2;
                     }
@@ -97,39 +118,17 @@ namespace NCBITaxonomyTest
                         {
                             node.Level = 3;
                         }
+
                         if (pNode.Level > 2)
                         {
                             node.Level = pNode.Level + 1;
                         }
-                        //else
-                        //{
-                        //    var ppNode = result.ContainsKey(pNode.Parent) ? result[pNode.Parent] : null;
-                        //    if (ppNode != null)
-                        //    {
-                        //        if (ppNode.Level != 0)
-                        //        {
-                        //            pNode.Level = ppNode.Level + 1;
-                        //            node.Level = pNode.Level + 1;
-                        //        }
-                        //        else
-                        //        {
-                        //            missingLevelsNodes.Add(node.Id);
-                        //        }
-                        //    }
-                        //}
                     }
-                    line++;
                 }
             }
-            CalcLevels(result);
-            // invert rankMap
-            foreach (var item in rankMap)
-            {
-                ClassNameMap.Add(item.Value, item.Key);
-            }
-
-            return result;
         }
+
+
         int maxLevel = 5;
         void CalcLevels(SortedDictionary<int, Node> nodes)
         {
@@ -146,7 +145,8 @@ namespace NCBITaxonomyTest
                 Parallel.ForEach(keyValuePairs, pair =>
                 {
                     var m = pair.Value;
-                    var p = nodes[m.Parent.Id];
+                    int parentId = m.Parent?.Id ?? RootNodeId;
+                    var p = nodes[parentId];
 
                     if (m.Level == 0 && p.Level > 1)
                     {
@@ -154,7 +154,7 @@ namespace NCBITaxonomyTest
                     }
                     else
                     {
-                        var g = nodes[p.Parent.Id];
+                        var g = nodes[parentId];
                         if (m.Level == 0 && p.Level == 0
                                          && g.Level > 0)
                         {
@@ -249,7 +249,7 @@ namespace NCBITaxonomyTest
 
         //public List<int> grandParents = new List<int>();
 
-        private Dictionary<string, int> rankMap = new Dictionary<string, int>();
+        public Dictionary<string, int> rankMap = new Dictionary<string, int>();
 
         int[] ParseLine(string s)
         {
