@@ -5,33 +5,40 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:NcbiTaxonomyTreeBrowserTest"
         xmlns:converters="clr-namespace:NcbiTaxonomyTreeBrowserTest.Converters"
+        xmlns:ncbiTaxonomyTest="clr-namespace:NCBITaxonomyTest;assembly=NCBITaxonomyTest"
         mc:Ignorable="d"
         Title="MainWindow" Height="350" Width="525"
         Loaded="MainWindow_OnLoaded">
+    <Window.DataContext>
+        <ObjectDataProvider ObjectType="{x:Type local:TaxonomyTreeViewModel}"
+                            IsAsynchronous="True" />
+    </Window.DataContext>
     <Window.Resources>
-        <local:TreeViewData x:Key="dataItems"/>
+        <!--<local:TreeViewData x:Key="dataItems"/>-->
 
         <converters:BooleanToVisibleConverter x:Key="BooleanToVisibleConverter"></converters:BooleanToVisibleConverter >
         <converters:IntToVisibleConverter x:Key="IntToVisibleConverter"></converters:IntToVisibleConverter >
         <converters:CountAndBrukerToVisibilityConverter x:Key="CountAndBrukerToVisibilityConverter"></converters:CountAndBrukerToVisibilityConverter>
+        <converters:CountAndBrukerToBooleanConverter x:Key="CountAndBrukerToBooleanConverter"></converters:CountAndBrukerToBooleanConverter>
+        
         <local:TaxNodeToUrlConverter x:Key="TaxNodeToUrlConverter"/>
 
         <HierarchicalDataTemplate x:Key="TaxonomyTemplate" 
                                   DataType="{x:Type local:TaxonomyNodeItem}"
-                                  ItemsSource="{Binding Path=SecondLevelItems}">
+                                  ItemsSource="{Binding Path=ChildItems}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock >
+                <TextBlock Visibility="{Binding Node.IsBrukerOrContainsBruker, Converter={StaticResource BooleanToVisibleConverter}}">
                     <Run Text="&#x26Ab;" Foreground="#0071BC"/>
-                    <TextBlock.Visibility>
+                    <!--<TextBlock.Visibility>
                         <MultiBinding Converter="{StaticResource CountAndBrukerToVisibilityConverter}">
                             <Binding Path="Node.BrukerCount"/>
                             <Binding Path="Node.IsBruker"/>
                         </MultiBinding>
-                    </TextBlock.Visibility>
+                    </TextBlock.Visibility>-->
                 </TextBlock>
-                <TextBlock Margin="2,0,0,0">
+                <!--<TextBlock Margin="2,0,0,0">
                     <Run Text="{Binding Node.Id}"> </Run>
-                </TextBlock>
+                </TextBlock>-->
                 <TextBlock Margin="5,0,0,0">
                     <Run Text="{Binding DisplayName}"></Run>
                 </TextBlock>
@@ -46,28 +53,63 @@
       
             <!--Set the foreground of the items in the second level
           to Navy.-->
-            <!--<HierarchicalDataTemplate.ItemContainerStyle>
+            <HierarchicalDataTemplate.ItemContainerStyle>
                 <Style TargetType="TreeViewItem">
-                    <Setter Property="Foreground" Value="DarkRed"/>
+                    <Setter Property="IsSelected" Value="{Binding IsSelected}" />
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Node.IsBrukerOrContainsBruker}" Value="False">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <!--<MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Property="Node.IsBrukerOrContainsBruker" Value="False"></Condition>
+                                <Condition Value="False">
+                                    <Condition.Binding>
+                                        <MultiBinding Converter="{StaticResource CountAndBrukerToBooleanConverter}">
+                                            <Binding Path="Node.BrukerCount"/>
+                                            <Binding Path="Node.IsBruker"/>
+                                        </MultiBinding>
+                                    </Condition.Binding>
+                                </Condition>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </MultiDataTrigger>-->
+                    </Style.Triggers>
                 </Style>
-            </HierarchicalDataTemplate.ItemContainerStyle>-->  
+            </HierarchicalDataTemplate.ItemContainerStyle>
         </HierarchicalDataTemplate>
 
     </Window.Resources>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*"></ColumnDefinition>
             <ColumnDefinition Width="2*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
-        <TreeView Grid.Column="0" Margin="20"
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        
+        <ToolBarTray Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0">
+            <ToolBar>
+                <Button Content="X" Click="ButtonX_OnClick"></Button>
+                <Button Content="Y" Click="ButtonY_OnClick"></Button>
+            </ToolBar>
+        </ToolBarTray>
+
+        <TreeView Grid.Column="0" Grid.Row="1" 
+                  Margin="20"
                   x:Name="TaxTree"
-                  ItemsSource="{Binding Source={StaticResource dataItems}}"
+                  ItemsSource="{Binding TreeViewData, IsAsync=True}"
                   ItemTemplate="{StaticResource TaxonomyTemplate}"
                   TreeViewItem.Expanded="TaxonomyNodeItem_Expanded" 
                   VirtualizingStackPanel.IsVirtualizing="True"
                   VirtualizingStackPanel.VirtualizationMode="Recycling">
         </TreeView>
-        <WebBrowser Grid.Column="1" 
+        <GridSplitter Grid.Column="0" Grid.Row="1" Width="5" Background="Gray"></GridSplitter>
+        <WebBrowser Grid.Column="1" Grid.Row="1" 
                     Name="Browser"
                     local:WebBrowserUtility.BindableSource="{Binding Path=SelectedValue ,ElementName=TaxTree, Converter={StaticResource TaxNodeToUrlConverter}}"/>
     </Grid>

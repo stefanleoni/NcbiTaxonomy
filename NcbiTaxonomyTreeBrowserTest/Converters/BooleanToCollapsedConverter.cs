@@ -52,8 +52,9 @@ namespace NcbiTaxonomyTreeBrowserTest.Converters
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            int count = (int)values[0];
-            bool isBruker = (bool)values[1];
+
+            int count = values[0] == DependencyProperty.UnsetValue ? 0 : (int)values[0];
+            bool isBruker = values[1] != DependencyProperty.UnsetValue && (bool)values[1];
             if (count > 0 || isBruker)
             {
                 return Visibility.Visible;
@@ -67,4 +68,25 @@ namespace NcbiTaxonomyTreeBrowserTest.Converters
             throw new NotImplementedException();
         }
     }
+
+    public sealed class CountAndBrukerToBooleanConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            int count = (int)values[0];
+            bool isBruker = (bool)values[1];
+            if (count > 0 || isBruker)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
 }

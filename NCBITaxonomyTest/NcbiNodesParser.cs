@@ -53,14 +53,14 @@ namespace NCBITaxonomyTest
                     int[] lineParsed = ParseLine(s);
                     if (lineParsed[IndexId] == 1 || lineParsed[IndexParent] == 1)
                     {
-                        Console.WriteLine("1");
+                        //Console.WriteLine("1");
                         //continue;
                         //root = true;
                     }
 
                     if (lineParsed[IndexId] == 131567)
                     {
-                        Console.WriteLine("Root!");
+                        //Console.WriteLine("Root!");
                         root = true;
                     }
 
@@ -140,7 +140,7 @@ namespace NCBITaxonomyTest
                 var noLevel = nodes.Where(pair => pair.Value.Level < 1);
                 var keyValuePairs = noLevel as KeyValuePair<int, Node>[] ?? noLevel.ToArray();
                 missingCount = keyValuePairs.Count();
-                Console.WriteLine($"level miss {missingCount }");
+                //Console.WriteLine($"level miss {missingCount }");
                 //var list2 = new List<int>();
                 Parallel.ForEach(keyValuePairs, pair =>
                 {
@@ -169,7 +169,7 @@ namespace NCBITaxonomyTest
 
         public void CalcAllNodesCount(SortedDictionary<int, Node> nodes)
         {
-            for(int i = maxLevel; i > 1; i--)
+            for(int i = maxLevel; i > 0; i--)
             {
                 CalcNodesCount(nodes, i);
             } 
@@ -180,7 +180,7 @@ namespace NCBITaxonomyTest
         {
             var parents = (from n in nodes where n.Value.Level == level select n.Value);
 
-            Console.WriteLine($"nodes parents = {parents.Count()}");
+            //Console.WriteLine($"nodes parents = {parents.Count()}");
 
             foreach (var node in parents)
             {
@@ -201,7 +201,7 @@ namespace NCBITaxonomyTest
             if(ClassNameMap.ContainsKey("species".GetHashCode()))
             {
                 var classId = "species".GetHashCode();
-                for(int i = maxLevel; i > 1; i--)
+                for(int i = maxLevel; i > 0; i--)
                 {
                     CalcSpeciesCount(nodes, i, classId);
                 } 
@@ -213,7 +213,7 @@ namespace NCBITaxonomyTest
             var parents = (from n in nodes where n.Value.Level == level select n.Value);
 
 
-            Console.WriteLine($"species parents = {parents.Count()}");
+            //Console.WriteLine($"species parents = {parents.Count()}");
 
             foreach (var node in parents)
             {
@@ -239,6 +239,10 @@ namespace NCBITaxonomyTest
                     node.BrukerCount += x;
                 }
 
+                if (node.Parent.Id == 131567)
+                {
+                    Console.WriteLine("BcN");
+                }
                 var parent = nodes[node.Parent.Id];
                 parent.RemainingSpeciesChildCounts.Add(node.SpeciesCount);
                 parent.RemainingBrukerChildCounts.Add(node.BrukerCount);

@@ -17,6 +17,9 @@ namespace NCBITaxonomyTest
         public int ClassId { get; set; }
 
         public bool IsBruker => Id < 0;
+        public bool ContainsBruker => BrukerCount > 0;
+
+        public bool IsBrukerOrContainsBruker => IsBruker || ContainsBruker;
 
 
         public int SpeciesCount { get; set; }

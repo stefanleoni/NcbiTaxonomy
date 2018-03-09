@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace NCBITaxonomyTest
 {
@@ -20,10 +21,30 @@ namespace NCBITaxonomyTest
 
             Console.ReadLine();
             Stopwatch w = new Stopwatch();
+            Stopwatch w2 = new Stopwatch();
             Stopwatch wAll = new Stopwatch();
             w.Start();
+            w2.Start();
             wAll.Start();
+/* read parallel */
+            var nodeTask = new Task<SortedDictionary<int, Node>>(() => reader.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp"));
+            nodeTask.Start();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"nodes read in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            w.Restart();
+            var namesTask = new Task<Dictionary<int, TaxName>>(() => namesReader.Read(@"C:\Test\NcbiTaxonomy\names.dmp"));
+            namesTask.Start();
+            w.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"names read in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
 
+            Task.WaitAll(new Task[] {nodeTask, namesTask});
+            var nodes = nodeTask.Result;
+            var names = namesTask.Result;
+   
+/* read seq
             var nodes = reader.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -40,14 +61,19 @@ namespace NCBITaxonomyTest
             reader.Add(@"C:\Test\NcbiTaxonomy\brukerNodes.dmp", nodes);
             namesReader.Add(names, @"C:\Test\NcbiTaxonomy\brukerNames.dmp");
             w.Stop();
+*/
+
+            w2.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"names names and nodes in {w2.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
+
+    
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"bruker read in {w.Elapsed.TotalMilliseconds} ms");
             Console.ForegroundColor = ConsoleColor.Gray;
             w.Restart();
 
-//            reader3.MergeBrukerNodesInto(nodes, names, bruker);
-          //  var bruker2 = reader2.ReadNames();
-          //  reader3.FindAllByName(bruker, @"C:\Test\NcbiTaxonomy\names.dmp");
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"set bruker nodes {w.Elapsed.TotalMilliseconds} ms");
@@ -55,7 +81,25 @@ namespace NCBITaxonomyTest
 
 
             w.Restart();
+            w2.Restart();
+/* calc parallel */
+            var calcNodesTask = new Task(() => reader.CalcAllNodesCount(nodes));
+            calcNodesTask.Start();
+            w.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"calculated nodes in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
 
+            w.Restart();
+            var calcSpeciesTask = new Task(() => reader.CalcAllSpeciesCount(nodes));
+            calcSpeciesTask.Start();
+            w.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"calculated species count in {w.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Task.WaitAll(new Task[] {calcNodesTask, calcSpeciesTask});
+
+/* calc seq           
             reader.CalcAllNodesCount(nodes);
 
             w.Stop();
@@ -69,10 +113,17 @@ namespace NCBITaxonomyTest
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"calculated species count in {w.Elapsed.TotalMilliseconds} ms");
             Console.ForegroundColor = ConsoleColor.Gray;
+*/
+
+            w2.Stop();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"calculated all in {w2.Elapsed.TotalMilliseconds} ms");
+            Console.ForegroundColor = ConsoleColor.Gray;
 
             //////////////////
-            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
             wAll.Stop();
+            Console.WriteLine();
             Console.WriteLine($"overall in {wAll.Elapsed.TotalMilliseconds} ms");
             
             //////////////////

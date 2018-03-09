@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -32,7 +33,7 @@ namespace NcbiTaxonomyTreeBrowserTest
         public MainWindow()
         {
             InitializeComponent();
-            DataContext = this;
+            //DataContext = this;
             //DriveInfo[] drives = DriveInfo.GetDrives();
             //foreach(DriveInfo driveInfo in drives)
             //    trvStructure.Items.Add(CreateTreeItem(driveInfo));
@@ -85,78 +86,30 @@ namespace NcbiTaxonomyTreeBrowserTest
             {
                 if (item.Header is TaxonomyNodeItem node)
                 {
-                    //node.SecondLevelItems.Add(new TaxonomyNodeItem(333, "new", node.Level+1));
+                    //node.ChildItems.Add(new TaxonomyNodeItem(333, "new", node.Level+1));
                     //tokenSource.Cancel();
                     //tokenSource = new CancellationTokenSource();
 
-                    //BindingOperations.EnableCollectionSynchronization(node.SecondLevelItems, node.Lock);
+                    //BindingOperations.EnableCollectionSynchronization(node.ChildItems, node.ChildItems);
                    
                     //var task =  node.QuerySecondLevelItems(tokenSource.Token);
                     //await task;
                     //var result = task.Result;
 
-                    foreach(var sItem in node.SecondLevelItems)
+                    foreach(var sItem in node.ChildItems)
                     {
                         int ind = 0;
                         //var ids = result[sItem.Id];
                         try
                         {
                             var ids = TaxonomyNodeItem.BaseData.FindChilds(sItem.Id);
-                            if (sItem.SecondLevelItems.Count != ids.Count())
+                            if (sItem.ChildItems.Count != ids.Count())
                             {
                                 var nameMap = new SortedDictionary<string, int>(comparer);
-                                try
-                                {
+                                BindingOperations.EnableCollectionSynchronization(sItem.ChildItems, sItem.childItems);
 
-                                    foreach (var id in ids)
-                                    {
+                                Task.Factory.StartNew(() => AddChilds(ids, nameMap, node, ind, sItem));
 
-                                        try
-                                        {
-                                            var name = TaxonomyNodeItem.BaseData.FindName(id);
-                                            nameMap.Add(name.name, id);
-
-                                        }
-                                        catch (Exception e1)
-                                        {
-
-                                            throw;
-                                        }
-                                    }
-
-                                }
-                                catch (Exception e3)
-                                {
-
-                                    throw;
-                                }
-                                foreach (var orderedEntry in nameMap)
-                                {
-                                    var nodeData = TaxonomyNodeItem.BaseData.FindNode(orderedEntry.Value);
-                                    //                                if (!sItem.SecondLevelItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
-                                    var newNode = new TaxonomyNodeItem(nodeData,
-                                        $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.ClassId)} L{nodeData.Level} ({nodeData.BrukerCount}/{nodeData.SpeciesCount}/{nodeData.NodesCount})",
-                                        node.Level + 1);
-                                    
-                                    ind++;
-                                    try
-                                    {
-                                   //     if (!sItem.SecondLevelItems.Contains(newNode))
-                                        {
-                                            sItem.SecondLevelItems.Add(newNode);
-                                        }
-                                 //       else
-                                        {
-                                  //          Console.WriteLine("duplicate");
-                                        }
-
-                                    }
-                                    catch (Exception e2)
-                                    {
-
-                                        throw;
-                                    }                                    
-                                }
                             }
                         }
                         catch (Exception ex)
@@ -167,51 +120,73 @@ namespace NcbiTaxonomyTreeBrowserTest
                 }
             }
         }
-    }
 
-    public class TaxNameComparer : IComparer<string>
-    {
-        #region Implementation of IComparer<in string>
-        private readonly IComparer<string> _baseComparer;
-        public TaxNameComparer(IComparer<string> baseComparer)
+        private static void AddChilds(IEnumerable<int> ids, SortedDictionary<string, int> nameMap, TaxonomyNodeItem taxonomyNodeItem, int ind,
+            TaxonomyNodeItem sItem)
         {
-            _baseComparer = baseComparer;
+            try
+            {
+                foreach (var id in ids)
+                {
+                    try
+                    {
+                        var name = TaxonomyNodeItem.BaseData.FindName(id);
+                        nameMap.Add(name.name, id);
+                    }
+                    catch (Exception e1)
+                    {
+                        throw;
+                    }
+                }
+
+            foreach (var orderedEntry in nameMap)
+            {
+                var nodeData = TaxonomyNodeItem.BaseData.FindNode(orderedEntry.Value);
+                //                                if (!sItem.ChildItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
+                var newNode = new TaxonomyNodeItem(nodeData,
+                    $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.ClassId)} L{nodeData.Level} ({nodeData.BrukerCount}/{nodeData.SpeciesCount}/{nodeData.NodesCount})",
+                    taxonomyNodeItem.Level + 1);
+
+
+                ind++;
+                try
+                {
+                    //     if (!sItem.ChildItems.Contains(newNode))
+                    {
+                        sItem.ChildItems.Add(newNode);
+                    }
+                    //       else
+                    {
+                        //          Console.WriteLine("duplicate");
+                    }
+                }
+                catch (Exception e2)
+                {
+                    throw;
+                }
+            }
+            }
+            catch (Exception e3)
+            {
+                throw;
+            }
         }
 
-        public int Compare(string x, string y)
+        private TaxonomyNodeItem itemToSearch;
+
+        private void ButtonX_OnClick(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrEmpty(x) && !string.IsNullOrEmpty(y)
-                && x.StartsWith("environmental") && y.StartsWith("unclassi"))
-            {
-                return -1;
-            }
-            if (!string.IsNullOrEmpty(x) && !string.IsNullOrEmpty(y)
-                &&  x.StartsWith("unclassi") && y.StartsWith("environmental") )
-            {
-                return 1;
-            }
-            if (x != null && x.StartsWith("unclass"))
-            {
-                return 1;
-            }
-            if (y != null && y.StartsWith("unclass"))
-            {
-                return -1;
-            }
-            if (x != null && x.StartsWith("environmental"))
-            {
-                return 1;
-            }
-            if (y != null && y.StartsWith("environmental"))
-            {
-                return -1;
-            }
-            return _baseComparer.Compare(x, y);
+            itemToSearch = TaxTree.SelectedItem as TaxonomyNodeItem;
         }
-        #endregion
+
+        private void ButtonY_OnClick(object sender, RoutedEventArgs e)
+        {
+            itemToSearch.IsSelected = true;
+            itemToSearch.IsExpanded = true;
+        }
     }
 
-    public class TaxonomyNodeItem 
+    public class TaxonomyNodeItem : TreeViewItemBase
     {
         public static TreeViewData BaseData; 
 
@@ -232,8 +207,11 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public ObservableCollection<TaxonomyNodeItem> SecondLevelItems { get; set; }
-
+        public ObservableCollection<TaxonomyNodeItem> ChildItems
+        {
+            get { return childItems; }
+        }
+        public ObservableCollection<TaxonomyNodeItem> childItems = new ObservableCollection<TaxonomyNodeItem>();
 
         public TaxonomyNodeItem(Node node, string displayName, int level)
         {
@@ -245,7 +223,6 @@ namespace NcbiTaxonomyTreeBrowserTest
             //Id = node.Id;
             DisplayName = displayName;
             Level = level;
-            SecondLevelItems = new ObservableCollection<TaxonomyNodeItem>();
         }
 
             
@@ -260,7 +237,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                     Dictionary<int, IEnumerable<int>> result = new Dictionary<int, IEnumerable<int>>();
                     Trace.WriteLine($"start task QuerySecondLevelItems");
                     ct.ThrowIfCancellationRequested();
-                    foreach (var secondLevelitem in SecondLevelItems)
+                    foreach (var secondLevelitem in ChildItems)
                     {
                         if (ct.IsCancellationRequested)
                         {
@@ -326,7 +303,7 @@ namespace NcbiTaxonomyTreeBrowserTest
     //            var rootItem = new TaxonomyNodeItem(2, "Bacteria", 0);
     //            foreach (var bac in bacs)
     //            {
-    //                rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(bac, bac.ToString(), rootItem.Level + 1));
+    //                rootItem.ChildItems.Add(new TaxonomyNodeItem(bac, bac.ToString(), rootItem.Level + 1));
     //            }
     //            Add(rootItem);
     //        }
@@ -336,6 +313,7 @@ namespace NcbiTaxonomyTreeBrowserTest
     //        }            
     //    }
     //}
+
 
     public class TreeViewData : ObservableCollection<TaxonomyNodeItem>
     {
@@ -392,12 +370,18 @@ namespace NcbiTaxonomyTreeBrowserTest
                 var rootNode = FindNode(131567);
                 var bacs = FindChilds(131567);
                 var rootItem = new TaxonomyNodeItem(rootNode, $"{FindName(rootNode.Id).name} - {TaxonomyNodeItem.BaseData.FindClassName(rootNode.ClassId)} L{rootNode.Level} ({rootNode.BrukerCount}/{rootNode.SpeciesCount}/{rootNode.NodesCount})", 0);
+                BindingOperations.EnableCollectionSynchronization(rootItem.ChildItems, rootItem.childItems);
+
                 foreach (var bac in bacs)
                 {
                     // resolve child
                     var node = nodes[bac];
-                    //
-                    rootItem.SecondLevelItems.Add(new TaxonomyNodeItem(node, $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.ClassId)} L{node.Level} ({rootNode.BrukerCount}/{node.SpeciesCount}/{node.NodesCount})", rootItem.Level + 1));
+                    var item = new TaxonomyNodeItem(node,
+                        $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.ClassId)} L{node.Level} ({rootNode.BrukerCount}/{node.SpeciesCount}/{node.NodesCount})",
+                        rootItem.Level + 1);
+                    BindingOperations.EnableCollectionSynchronization(item.ChildItems, item.childItems);
+
+                    rootItem.ChildItems.Add(item);
                 }
                 Add(rootItem);
             }
@@ -412,4 +396,46 @@ namespace NcbiTaxonomyTreeBrowserTest
             return nodes[id];
         }
     }
+
+
+    public class TreeViewItemBase : INotifyPropertyChanged
+    {
+        private bool isSelected;
+        public bool IsSelected
+        {
+            get { return this.isSelected; }
+            set
+            {
+                if(value != this.isSelected)
+                {
+                    this.isSelected = value;
+                    NotifyPropertyChanged("IsSelected");
+                }
+            }
+        }
+
+        private bool isExpanded;
+        public bool IsExpanded
+        {
+            get { return this.isExpanded; }
+            set
+            {
+                if(value != this.isExpanded)
+                {
+                    this.isExpanded = value;
+                    NotifyPropertyChanged("IsExpanded");
+                }
+            }
+        }
+
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public void NotifyPropertyChanged(string propName)
+        {
+            if(this.PropertyChanged != null)
+                this.PropertyChanged(this, new PropertyChangedEventArgs(propName));
+        }
+    }
+
 }
