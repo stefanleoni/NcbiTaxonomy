@@ -56,9 +56,13 @@
     </ApplicationDefinition>
     <Compile Include="Converters\BooleanConverter.cs" />
     <Compile Include="Converters\BooleanToCollapsedConverter.cs" />
+    <Compile Include="Properties\Annotations.cs" />
     <Compile Include="TaxNameComparer.cs" />
     <Compile Include="TaxNodeToUrlConverter.cs" />
+    <Compile Include="TaxonomyNodeItem.cs" />
     <Compile Include="TaxonomyTreeViewModel.cs" />
+    <Compile Include="TreeViewData.cs" />
+    <Compile Include="TreeViewItemBase.cs" />
     <Compile Include="WebBrowserUtility.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

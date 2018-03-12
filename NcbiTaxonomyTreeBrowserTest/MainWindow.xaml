@@ -8,7 +8,8 @@
         xmlns:ncbiTaxonomyTest="clr-namespace:NCBITaxonomyTest;assembly=NCBITaxonomyTest"
         mc:Ignorable="d"
         Title="MainWindow" Height="350" Width="525"
-        Loaded="MainWindow_OnLoaded">
+        Loaded="MainWindow_OnLoaded"
+        Name="MwWindow">
     <Window.DataContext>
         <ObjectDataProvider ObjectType="{x:Type local:TaxonomyTreeViewModel}"
                             IsAsynchronous="True" />
@@ -58,23 +59,16 @@
                     <Setter Property="IsSelected" Value="{Binding IsSelected}" />
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding Node.IsBrukerOrContainsBruker}" Value="False">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                        <!--<MultiDataTrigger>
+                        <!--<DataTrigger Binding="{Binding Node.IsBrukerOrContainsBruker}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>-->
+                        <MultiDataTrigger>
                             <MultiDataTrigger.Conditions>
-                                <Condition Property="Node.IsBrukerOrContainsBruker" Value="False"></Condition>
-                                <Condition Value="False">
-                                    <Condition.Binding>
-                                        <MultiBinding Converter="{StaticResource CountAndBrukerToBooleanConverter}">
-                                            <Binding Path="Node.BrukerCount"/>
-                                            <Binding Path="Node.IsBruker"/>
-                                        </MultiBinding>
-                                    </Condition.Binding>
-                                </Condition>
+                                <Condition Binding="{Binding Node.IsBrukerOrContainsBruker}" Value="False"></Condition>
+                                <Condition Binding="{Binding ElementName=MwWindow, Path=ShowOnlyBrukerNodes}" Value="True"></Condition>
                             </MultiDataTrigger.Conditions>
                             <Setter Property="Visibility" Value="Collapsed" />
-                        </MultiDataTrigger>-->
+                        </MultiDataTrigger>
                     </Style.Triggers>
                 </Style>
             </HierarchicalDataTemplate.ItemContainerStyle>
@@ -96,6 +90,9 @@
             <ToolBar>
                 <Button Content="X" Click="ButtonX_OnClick"></Button>
                 <Button Content="Y" Click="ButtonY_OnClick"></Button>
+            </ToolBar>
+            <ToolBar>
+                <ToggleButton Content="Show Only Bruker" IsChecked="{Binding ElementName=MwWindow, Path=ShowOnlyBrukerNodes}"></ToggleButton>
             </ToolBar>
         </ToolBarTray>
 
