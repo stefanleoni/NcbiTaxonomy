@@ -152,16 +152,16 @@ namespace NCBITaxonomyTest
                     {
                         m.Level = p.Level + 1;
                     }
-                    else
-                    {
-                        var g = nodes[parentId];
-                        if (m.Level == 0 && p.Level == 0
-                                         && g.Level > 0)
-                        {
-                            p.Level = g.Level + 1;
-                            m.Level = p.Level + 1;
-                        }
-                    }
+                   // else
+                    //{
+                        //var g = nodes[parentId];
+                        //if (m.Level == 0 && p.Level == 0
+                        //                 && p.Level > 0)
+                        //{
+                        //    p.Level = p.Level + 1;
+                        //    m.Level = p.Level + 1;
+                        //}
+                    //}
                     maxLevel = maxLevel < m.Level ? m.Level : maxLevel;
                 });
             } while (missingCount > 0 && lastCount != missingCount);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Data;
 using NCBITaxonomyTest;
 
@@ -44,21 +45,32 @@ namespace NcbiTaxonomyTreeBrowserTest
         public TreeViewData()
         {
             NcbiNodesParser = new NcbiNodesParser();
-            nodes = NcbiNodesParser.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-            NcbiNodesParser.Add(@"C:\Test\NcbiTaxonomy\brukerNodes.dmp",nodes);
-            //foreach (var node in nodes)
-            //{
-            //    if (node.Value.Id == 0)
-            //    {
-            //        throw new Exception(".-(");
-            //    }
-            //}
+            //nodes = NcbiNodesParser.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+            var nodeTask = new Task<SortedDictionary<int, Node>>(() =>
+            {
+                var _nodes =  NcbiNodesParser.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
+                NcbiNodesParser.Add(@"C:\Test\NcbiTaxonomy\brukerNodes.dmp", _nodes);
+                return _nodes;
+            });
+            nodeTask.Start();
+
+            
+
             NcbiNamesParser = new NcbiNamesParser();
-            names = NcbiNamesParser.Read(@"C:\Test\NcbiTaxonomy\names.dmp");
-            NcbiNamesParser.Add(names, @"C:\Test\NcbiTaxonomy\BrukerNames.dmp");
+            //names = NcbiNamesParser.Read(@"C:\Test\NcbiTaxonomy\names.dmp");
+            var namesTask = new Task<Dictionary<int, TaxName>>(() =>
+            {
+                var _names = NcbiNamesParser.Read(@"C:\Test\NcbiTaxonomy\names.dmp");
+                NcbiNamesParser.Add(_names, @"C:\Test\NcbiTaxonomy\BrukerNames.dmp");
+                return _names;
+            });
+            namesTask.Start();
             //var brukerReader = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
             //var brukerNodes = brukerReader.Read(NcbiNodesParser.rankMap["no rank"]);
             //brukerReader.MergeBrukerNodesInto(nodes, names, brukerNodes);
+            Task.WaitAll(new Task[] { nodeTask, namesTask });
+            nodes = nodeTask.Result;
+            names = namesTask.Result;
 
             NcbiNodesParser.CalcAllNodesCount(nodes);
             NcbiNodesParser.CalcAllSpeciesCount(nodes);

@@ -182,5 +182,10 @@ namespace NcbiTaxonomyTreeBrowserTest
             itemToSearch.IsSelected = true;
             itemToSearch.IsExpanded = true;
         }
+
+        private void Browser_OnNavigated(object sender, NavigationEventArgs e)
+        {
+            
+        }
     }
 }

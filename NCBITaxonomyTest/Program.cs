@@ -19,7 +19,7 @@ namespace NCBITaxonomyTest
             var namesReader = new NcbiNamesParser();
             var reader3 = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
 
-            Console.ReadLine();
+           // Console.ReadLine();
             Stopwatch w = new Stopwatch();
             Stopwatch w2 = new Stopwatch();
             Stopwatch wAll = new Stopwatch();

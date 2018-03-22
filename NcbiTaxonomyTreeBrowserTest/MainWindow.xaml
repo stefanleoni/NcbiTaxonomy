@@ -106,7 +106,7 @@
                   VirtualizingStackPanel.VirtualizationMode="Recycling">
         </TreeView>
         <GridSplitter Grid.Column="0" Grid.Row="1" Width="5" Background="Gray"></GridSplitter>
-        <WebBrowser Grid.Column="1" Grid.Row="1" 
+        <WebBrowser Grid.Column="1" Grid.Row="1" Navigated="Browser_OnNavigated"
                     Name="Browser"
                     local:WebBrowserUtility.BindableSource="{Binding Path=SelectedValue ,ElementName=TaxTree, Converter={StaticResource TaxNodeToUrlConverter}}"/>
     </Grid>
