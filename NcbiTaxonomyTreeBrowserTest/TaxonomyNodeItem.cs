@@ -8,8 +8,7 @@ namespace NcbiTaxonomyTreeBrowserTest
 {
     public class TaxonomyNodeItem : TreeViewItemBase
     {
-        public static TreeViewData BaseData; 
-
+        public static TreeViewData BaseData;
 
         public string DisplayName { get; set; }
         public int Id
@@ -18,6 +17,8 @@ namespace NcbiTaxonomyTreeBrowserTest
         }
 
         public Node Node { get; set; }
+
+        public TaxonomyNodeItem ParentItem { get; set; }
 
         public int Level { get; set; }
 
@@ -33,9 +34,10 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         public ObservableCollection<TaxonomyNodeItem> childItems = new ObservableCollection<TaxonomyNodeItem>();
 
-        public TaxonomyNodeItem(Node node, string displayName, int level)
+        public TaxonomyNodeItem(TaxonomyNodeItem parentItem, Node node, string displayName, int level)
         {
             Node = node;
+            ParentItem = parentItem;
             if (node.Id == 0)
             {
                 throw new Exception(".-(");

@@ -44,4 +44,15 @@ namespace NCBITaxonomyTest
         public string Name { get; set; }
 
     }
+
+    public class ListViewNode
+    {
+        public Node Node { get; set; }
+        public string Name { get; set; }
+        public ListViewNode(Node source, string name)
+        {
+            Node = source;
+            Name = name;
+        }
+    }
 }

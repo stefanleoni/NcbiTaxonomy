@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NCBITaxonomyTest
@@ -14,10 +15,42 @@ namespace NCBITaxonomyTest
         {
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine("Press key to start...");
+            TaxDumpSource dumpSource = new TaxDumpSource(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Bruker", "NcbiDump"));
+            ProgressBar progress = null;
+            dumpSource.Create((status, currentBytes, fullSize) =>
+            {
+                if (status == DownloadProgressStatus.Started)
+                {
+                    Console.WriteLine("Starting Download of NCBI...");
+                }
+                if (status == DownloadProgressStatus.Finished)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Download complete.");
+                }
+                if (status == DownloadProgressStatus.Extracting)
+                {
+                    Console.WriteLine("Extracting dump...");
+                }
+                if (status == DownloadProgressStatus.Complete)
+                {
+                    Console.WriteLine("Extraction complete.");
+                }
+
+                if (status == DownloadProgressStatus.Progress)
+                {
+                    if (progress == null)
+                    {
+                        progress = new ProgressBar();
+                    }
+                    progress.Report((double) currentBytes / fullSize);
+                }
+            });
+            progress?.Dispose();
             //var reader = new NcbiNodesParser(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             var reader = new NcbiNodesParser();
             var namesReader = new NcbiNamesParser();
-            var reader3 = new BrukerNodesParser(@"C:\Test\NcbiTaxonomy\bruker.dmp");
+            var reader3 = new BrukerNodesParser(dumpSource.BrukerDumpFile);
 
            // Console.ReadLine();
             Stopwatch w = new Stopwatch();
@@ -27,13 +60,13 @@ namespace NCBITaxonomyTest
             w2.Start();
             wAll.Start();
 /* read parallel */
-            var nodeTask = new Task<SortedDictionary<int, Node>>(() => reader.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp"));
+            var nodeTask = new Task<SortedDictionary<int, Node>>(() => reader.Read(dumpSource.NodesDumpFile));
             nodeTask.Start();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine($"nodes read in {w.Elapsed.TotalMilliseconds} ms");
             Console.ForegroundColor = ConsoleColor.Gray;
             w.Restart();
-            var namesTask = new Task<Dictionary<int, TaxName>>(() => namesReader.Read(@"C:\Test\NcbiTaxonomy\names.dmp"));
+            var namesTask = new Task<Dictionary<int, TaxName>>(() => namesReader.Read(dumpSource.NamesDumpFile));
             namesTask.Start();
             w.Stop();
             Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -383,5 +416,4 @@ namespace NCBITaxonomyTest
     //}
     //w.Stop();
     //Console.WriteLine($"parsed in {w.Elapsed.Milliseconds} ms");
-
 }

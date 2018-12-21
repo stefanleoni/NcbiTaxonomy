@@ -9,7 +9,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
 using System.Windows.Navigation;
+using NCBITaxonomyTest;
 
 namespace NcbiTaxonomyTreeBrowserTest
 {
@@ -84,20 +86,9 @@ namespace NcbiTaxonomyTreeBrowserTest
             {
                 if (item.Header is TaxonomyNodeItem node)
                 {
-                    //node.ChildItems.Add(new TaxonomyNodeItem(333, "new", node.Level+1));
-                    //tokenSource.Cancel();
-                    //tokenSource = new CancellationTokenSource();
-
-                    //BindingOperations.EnableCollectionSynchronization(node.ChildItems, node.ChildItems);
-                   
-                    //var task =  node.QuerySecondLevelItems(tokenSource.Token);
-                    //await task;
-                    //var result = task.Result;
-
                     foreach(var sItem in node.ChildItems)
                     {
                         int ind = 0;
-                        //var ids = result[sItem.Id];
                         try
                         {
                             var ids = TaxonomyNodeItem.BaseData.FindChilds(sItem.Id);
@@ -106,7 +97,7 @@ namespace NcbiTaxonomyTreeBrowserTest
                                 var nameMap = new SortedDictionary<string, int>(comparer);
                                 BindingOperations.EnableCollectionSynchronization(sItem.ChildItems, sItem.childItems);
 
-                                Task.Factory.StartNew(() => AddChilds(ids, nameMap, node, ind, sItem));
+                                Task.Factory.StartNew(() => AddChilds(sItem, ids, nameMap, node, ind));
 
                             }
                         }
@@ -119,8 +110,7 @@ namespace NcbiTaxonomyTreeBrowserTest
             }
         }
 
-        private static void AddChilds(IEnumerable<int> ids, SortedDictionary<string, int> nameMap, TaxonomyNodeItem taxonomyNodeItem, int ind,
-            TaxonomyNodeItem sItem)
+        private static void AddChilds(TaxonomyNodeItem parentItem, IEnumerable<int> ids, SortedDictionary<string, int> nameMap, TaxonomyNodeItem taxonomyNodeItem, int ind)
         {
             try
             {
@@ -141,17 +131,16 @@ namespace NcbiTaxonomyTreeBrowserTest
             {
                 var nodeData = TaxonomyNodeItem.BaseData.FindNode(orderedEntry.Value);
                 //                                if (!sItem.ChildItems.Any(nodeItem => nodeItem.Id == nodeData.Id))
-                var newNode = new TaxonomyNodeItem(nodeData,
+                var newNode = new TaxonomyNodeItem(parentItem, nodeData,
                     $"{orderedEntry.Key} - {TaxonomyNodeItem.BaseData.FindClassName(nodeData.ClassId)} L{nodeData.Level} ({nodeData.BrukerCount}/{nodeData.SpeciesCount}/{nodeData.NodesCount})",
                     taxonomyNodeItem.Level + 1);
-
 
                 ind++;
                 try
                 {
                     //     if (!sItem.ChildItems.Contains(newNode))
                     {
-                        sItem.ChildItems.Add(newNode);
+                        parentItem.ChildItems.Add(newNode);
                     }
                     //       else
                     {
@@ -179,13 +168,64 @@ namespace NcbiTaxonomyTreeBrowserTest
 
         private void ButtonY_OnClick(object sender, RoutedEventArgs e)
         {
+            ExpandParent(itemToSearch);
             itemToSearch.IsSelected = true;
             itemToSearch.IsExpanded = true;
+        }
+
+        public void ExpandParent(TaxonomyNodeItem item)
+        {
+            var current = item;
+            while(current.ParentItem != null)
+            {
+                current.ParentItem.IsExpanded = true;
+                current = current.ParentItem;
+            }
         }
 
         private void Browser_OnNavigated(object sender, NavigationEventArgs e)
         {
             
+        }
+
+
+        private void Selector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.AddedItems?.Count > 0)
+            {
+                var nodeView = e.AddedItems[0] as ListViewNode;
+                foreach (var taxTreeItem in TaxTree.Items)
+                {
+                    if (taxTreeItem is TaxonomyNodeItem iii)
+                    {
+                        if (iii.Id == nodeView?.Node.Id)
+                        {
+                            iii.IsExpanded = true;
+                            iii.IsSelected = true;
+                            return;
+                        }
+                        if (Find(iii, nodeView)) return;
+                    }
+                }
+                //Todo now find in tree !!!!
+            }
+        }
+
+        private static bool Find(TaxonomyNodeItem iii1, ListViewNode nodeView)
+        {
+            if (iii1 == null) return false;
+
+            foreach (var taxonomyNodeItem in iii1.ChildItems)
+            {
+                if (taxonomyNodeItem.Id == nodeView?.Node.Id)
+                {
+                    iii1.IsExpanded = true;
+                    iii1.IsSelected = true;
+                    return true;
+                }
+                return Find(taxonomyNodeItem, nodeView);
+            }
+            return false;
         }
     }
 }

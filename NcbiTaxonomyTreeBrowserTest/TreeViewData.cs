@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using NCBITaxonomyTest;
@@ -42,14 +44,20 @@ namespace NcbiTaxonomyTreeBrowserTest
             return NcbiNodesParser.ClassNameMap[id];
         }
 
-        public TreeViewData()
+        private TaxDumpSource taxDumpSource;
+
+        public TreeViewData(Action<DownloadProgressStatus, long, long> progressInfo)
         {
+            SearchResult = new ObservableCollection<ListViewNode>();
             NcbiNodesParser = new NcbiNodesParser();
+            taxDumpSource = new TaxDumpSource(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Bruker", "NcbiDump"));
+            taxDumpSource.Create(progressInfo);
+
             //nodes = NcbiNodesParser.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
             var nodeTask = new Task<SortedDictionary<int, Node>>(() =>
             {
-                var _nodes =  NcbiNodesParser.Read(@"C:\Test\NcbiTaxonomy\nodes.dmp");
-                NcbiNodesParser.Add(@"C:\Test\NcbiTaxonomy\brukerNodes.dmp", _nodes);
+                var _nodes =  NcbiNodesParser.Read(taxDumpSource.NodesDumpFile);
+                NcbiNodesParser.Add(taxDumpSource.BrukerNodesDumpFile, _nodes);
                 return _nodes;
             });
             nodeTask.Start();
@@ -60,8 +68,8 @@ namespace NcbiTaxonomyTreeBrowserTest
             //names = NcbiNamesParser.Read(@"C:\Test\NcbiTaxonomy\names.dmp");
             var namesTask = new Task<Dictionary<int, TaxName>>(() =>
             {
-                var _names = NcbiNamesParser.Read(@"C:\Test\NcbiTaxonomy\names.dmp");
-                NcbiNamesParser.Add(_names, @"C:\Test\NcbiTaxonomy\BrukerNames.dmp");
+                var _names = NcbiNamesParser.Read(taxDumpSource.NamesDumpFile);
+                NcbiNamesParser.Add(_names, taxDumpSource.BrukerNamesDumpFile);
                 return _names;
             });
             namesTask.Start();
@@ -82,14 +90,15 @@ namespace NcbiTaxonomyTreeBrowserTest
             {
                 var rootNode = FindNode(131567);
                 var bacs = FindChilds(131567);
-                var rootItem = new TaxonomyNodeItem(rootNode, $"{FindName(rootNode.Id).name} - {TaxonomyNodeItem.BaseData.FindClassName(rootNode.ClassId)} L{rootNode.Level} ({rootNode.BrukerCount}/{rootNode.SpeciesCount}/{rootNode.NodesCount})", 0);
+                //var rootItem = new TaxonomyNodeItem(rootNode, $"{FindName(rootNode.Id).name} - {TaxonomyNodeItem.BaseData.FindClassName(rootNode.ClassId)} L{rootNode.Level} ({rootNode.BrukerCount}/{rootNode.SpeciesCount}/{rootNode.NodesCount})", 0);
+                var rootItem = new TaxonomyNodeItem(null, rootNode, $"{FindName(rootNode.Id).name} - {TaxonomyNodeItem.BaseData.FindClassName(rootNode.ClassId)} ({rootNode.BrukerCount}/{rootNode.SpeciesCount}/{rootNode.NodesCount})", 0);
                 BindingOperations.EnableCollectionSynchronization(rootItem.ChildItems, rootItem.childItems);
 
                 foreach (var bac in bacs)
                 {
                     // resolve child
                     var node = nodes[bac];
-                    var item = new TaxonomyNodeItem(node,
+                    var item = new TaxonomyNodeItem(null, node,
                         $"{FindName(bac).name} - {TaxonomyNodeItem.BaseData.FindClassName(node.ClassId)} L{node.Level} ({rootNode.BrukerCount}/{node.SpeciesCount}/{node.NodesCount})",
                         rootItem.Level + 1);
                     BindingOperations.EnableCollectionSynchronization(item.ChildItems, item.childItems);
@@ -108,5 +117,49 @@ namespace NcbiTaxonomyTreeBrowserTest
         {
             return nodes[id];
         }
+
+        public ObservableCollection<ListViewNode> SearchResult { get; set; }
+
+        public void FindName(string searchSpecies)
+        {
+            SearchResult.Clear();
+
+            var result = names.Where(pair => pair.Value.name.StartsWith(searchSpecies));
+            if (result != null)
+            {
+                foreach (var keyValuePair in result)
+                {
+                    SearchResult.Add(new ListViewNode(nodes[keyValuePair.Key], keyValuePair.Value.name));
+                }
+            }
+
+            //var result = names.FirstOrDefault(pair => pair.Value.name.StartsWith(searchSpecies));
+                //if (result.Value != null)
+                //{
+                //    var node = nodes[result.Key];
+                //    if (this[0].Id == node.Id)
+                //    {
+                //        this[0].IsExpanded = true;
+                //        this[0].IsSelected = true;
+                //        return;
+                //    }
+                //    var found = WalkTree(this[0], node.Id);
+
+                //}
+        }
+
+        //bool WalkTree(TaxonomyNodeItem taxonomyNodeItem, int nodeId)
+        //{
+        //    if (taxonomyNodeItem.ChildItems?.Any() == true)
+        //    {
+        //        foreach (var childItem in taxonomyNodeItem.ChildItems)
+        //        {
+        //            if (childItem.Id == nodeId)
+        //                return true;
+        //            return WalkTree(childItem, nodeId);
+        //        }
+        //    }
+        //    return false;
+        //}
     }
 }

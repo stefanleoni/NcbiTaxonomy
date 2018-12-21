@@ -57,7 +57,7 @@
             <HierarchicalDataTemplate.ItemContainerStyle>
                 <Style TargetType="TreeViewItem">
                     <Setter Property="IsSelected" Value="{Binding IsSelected}" />
-                    <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                     <Style.Triggers>
                         <!--<DataTrigger Binding="{Binding Node.IsBrukerOrContainsBruker}" Value="False">
                             <Setter Property="Visibility" Value="Collapsed" />
@@ -79,6 +79,7 @@
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*"></ColumnDefinition>
+            <ColumnDefinition Width="1*"></ColumnDefinition>
             <ColumnDefinition Width="2*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -94,8 +95,12 @@
             <ToolBar>
                 <ToggleButton Content="Show Only Bruker" IsChecked="{Binding ElementName=MwWindow, Path=ShowOnlyBrukerNodes}"></ToggleButton>
             </ToolBar>
+            <ToolBar>
+                <TextBox Text="{Binding SearchSpecies, UpdateSourceTrigger=PropertyChanged, Delay=300}" MinWidth="200"></TextBox>
+            </ToolBar>
         </ToolBarTray>
 
+        
         <TreeView Grid.Column="0" Grid.Row="1" 
                   Margin="20"
                   x:Name="TaxTree"
@@ -106,7 +111,17 @@
                   VirtualizingStackPanel.VirtualizationMode="Recycling">
         </TreeView>
         <GridSplitter Grid.Column="0" Grid.Row="1" Width="5" Background="Gray"></GridSplitter>
-        <WebBrowser Grid.Column="1" Grid.Row="1" Navigated="Browser_OnNavigated"
+        <Grid Grid.Column="1" Grid.Row="1">
+            <DataGrid ItemsSource="{Binding TreeViewData.SearchResult}" AutoGenerateColumns="False"
+                      SelectionChanged="Selector_OnSelectionChanged">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Id" Binding="{Binding Node.Id}"></DataGridTextColumn>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}"></DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+        <GridSplitter Grid.Column="1" Grid.Row="1" Width="5" Background="Gray"></GridSplitter>
+        <WebBrowser Grid.Column="2" Grid.Row="1" Navigated="Browser_OnNavigated"
                     Name="Browser"
                     local:WebBrowserUtility.BindableSource="{Binding Path=SelectedValue ,ElementName=TaxTree, Converter={StaticResource TaxNodeToUrlConverter}}"/>
     </Grid>
